@@ -18,11 +18,7 @@
 # You can create any custom variable you would like, and they will be accessible
 # in the templates via {{ site.myvariable }}.
 
-<<<<<<< HEAD
-title: agoramachina
-=======
-title: Your awesome title
->>>>>>> ae38ac7 (_config.yml)
+title: AM
 email: agoramachina@gmail.com
 description: >- # this means to ignore newlines until "baseurl:"
   Write an awesome description for your new site here. You can edit this
@@ -34,9 +30,10 @@ twitter_username: agoramachina
 github_username:  agoramachina
 
 # Build settings
-theme: architect
+theme: minima
 plugins:
   - jekyll-feed
+  - jekyll-remote-theme
 
 # Exclude from processing.
 # The following items will not be processed, by default.
