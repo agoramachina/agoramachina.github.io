@@ -106,6 +106,27 @@
             transition: opacity 0.3s ease;
         }
 
+        /* Touch zone visual feedback */
+        .touch-zone-indicator {
+            position: absolute;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.1);
+            display: none;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .touch-zone-top {
+            top: 0;
+            height: 50%;
+        }
+
+        .touch-zone-bottom {
+            bottom: 0;
+            height: 50%;
+        }
+
         @media (max-width: 768px) {
             .touch-indicator {
                 bottom: 10px;
@@ -145,16 +166,20 @@
         ESC Toggle all parameters<br>
         </span>
         <span class="mobile-controls" style="display: none;">
-        TAP: Show/hide menu<br>
-        SWIPE ←/→: Switch param<br>
-        SWIPE ↑/↓: Adjust value<br>
+        TAP: Top half = increase • Bottom half = decrease<br>
+        SWIPE ←/→: Switch parameters<br>
+        SHAKE: Randomize all parameters<br>
         </span>
     </div>
 
     <!-- Touch indicator for mobile -->
     <div class="touch-indicator" id="touchIndicator" style="display: none;">
-        👆 Tap to toggle menu • Swipe to control
+        👆 Tap top/bottom to adjust • Swipe ←/→ to switch • Shake to randomize
     </div>
+
+    <!-- Touch zone indicators -->
+    <div class="touch-zone-indicator touch-zone-top" id="touchZoneTop"></div>
+    <div class="touch-zone-indicator touch-zone-bottom" id="touchZoneBottom"></div>
 
     <!-- All Parameters Display -->
     <div class="menu hidden" id="menu">
@@ -220,6 +245,12 @@
         let touchEndY = 0;
         let isTouch = false;
         const SWIPE_THRESHOLD = 50; // minimum distance for swipe
+        
+        // Shake detection
+        let lastShakeTime = 0;
+        let shakeThreshold = 15; // acceleration threshold
+        let lastAcceleration = { x: 0, y: 0, z: 0 };
+        const SHAKE_COOLDOWN = 1000; // ms between shakes
         
         // Audio system
         let audioContext = null;
@@ -713,6 +744,66 @@
             // Prevent default touch behaviors
             canvas.addEventListener('touchstart', (e) => e.preventDefault());
             canvas.addEventListener('touchmove', (e) => e.preventDefault());
+            
+            // Shake detection
+            setupShakeDetection();
+        }
+
+        function setupShakeDetection() {
+            if (!isMobile || !window.DeviceMotionEvent) return;
+            
+            // Request permission for iOS 13+
+            if (typeof DeviceMotionEvent.requestPermission === 'function') {
+                DeviceMotionEvent.requestPermission()
+                    .then(response => {
+                        if (response == 'granted') {
+                            window.addEventListener('devicemotion', handleDeviceMotion);
+                        }
+                    })
+                    .catch(console.error);
+            } else {
+                // Non-iOS or older iOS
+                window.addEventListener('devicemotion', handleDeviceMotion);
+            }
+        }
+
+        function handleDeviceMotion(event) {
+            if (!isMobile) return;
+            
+            const acceleration = event.accelerationIncludingGravity;
+            if (!acceleration) return;
+            
+            const now = Date.now();
+            if (now - lastShakeTime < SHAKE_COOLDOWN) return;
+            
+            // Calculate total acceleration change
+            const deltaX = Math.abs(acceleration.x - lastAcceleration.x);
+            const deltaY = Math.abs(acceleration.y - lastAcceleration.y);
+            const deltaZ = Math.abs(acceleration.z - lastAcceleration.z);
+            const totalDelta = deltaX + deltaY + deltaZ;
+            
+            if (totalDelta > shakeThreshold) {
+                lastShakeTime = now;
+                randomizeParameters();
+                updateStatus('🎲 Shake detected - randomized!', 'success');
+                
+                // Show a brief visual feedback
+                const indicator = document.getElementById('touchIndicator');
+                if (indicator) {
+                    indicator.style.opacity = '1';
+                    indicator.textContent = '🎲 Randomized!';
+                    setTimeout(() => {
+                        indicator.textContent = '👆 Tap top/bottom to adjust • Swipe ←/→ to switch • Shake to randomize';
+                        indicator.style.opacity = '0.7';
+                    }, 2000);
+                }
+            }
+            
+            lastAcceleration = {
+                x: acceleration.x,
+                y: acceleration.y,
+                z: acceleration.z
+            };
         }
 
         function handleTouchStart(e) {
@@ -722,6 +813,20 @@
             touchStartX = touch.clientX;
             touchStartY = touch.clientY;
             isTouch = true;
+            
+            // Show visual feedback for touch zones
+            const screenHeight = window.innerHeight;
+            const tapY = touchStartY;
+            const topZone = document.getElementById('touchZoneTop');
+            const bottomZone = document.getElementById('touchZoneBottom');
+            
+            if (tapY < screenHeight * 0.5 && topZone) {
+                topZone.style.display = 'block';
+                topZone.style.background = 'rgba(76, 175, 80, 0.2)'; // Green for increase
+            } else if (bottomZone) {
+                bottomZone.style.display = 'block';
+                bottomZone.style.background = 'rgba(244, 67, 54, 0.2)'; // Red for decrease
+            }
             
             // Show controls on touch
             resetControlsFadeTimer();
@@ -738,6 +843,12 @@
         function handleTouchEnd(e) {
             if (!isMobile || !isTouch) return;
             
+            // Hide touch zone indicators
+            const topZone = document.getElementById('touchZoneTop');
+            const bottomZone = document.getElementById('touchZoneBottom');
+            if (topZone) topZone.style.display = 'none';
+            if (bottomZone) bottomZone.style.display = 'none';
+            
             const deltaX = touchEndX - touchStartX;
             const deltaY = touchEndY - touchStartY;
             const absDeltaX = Math.abs(deltaX);
@@ -745,21 +856,23 @@
             
             // Determine if it's a tap or swipe
             if (absDeltaX < SWIPE_THRESHOLD && absDeltaY < SWIPE_THRESHOLD) {
-                // Tap - toggle menu
-                toggleMenu();
+                // Tap - check if top or bottom half of screen
+                const screenHeight = window.innerHeight;
+                const tapY = touchStartY;
+                
+                if (tapY < screenHeight * 0.5) {
+                    // Top half - increase parameter
+                    adjustParameter(1);
+                } else {
+                    // Bottom half - decrease parameter
+                    adjustParameter(-1);
+                }
             } else if (absDeltaX > absDeltaY && absDeltaX > SWIPE_THRESHOLD) {
                 // Horizontal swipe - switch parameters
                 if (deltaX > 0) {
                     switchParameter(1); // Swipe right
                 } else {
                     switchParameter(-1); // Swipe left
-                }
-            } else if (absDeltaY > absDeltaX && absDeltaY > SWIPE_THRESHOLD) {
-                // Vertical swipe - adjust parameter
-                if (deltaY < 0) {
-                    adjustParameter(1); // Swipe up - increase
-                } else {
-                    adjustParameter(-1); // Swipe down - decrease
                 }
             }
             
