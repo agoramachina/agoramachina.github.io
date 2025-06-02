@@ -688,16 +688,9 @@
                 // Show mobile controls, hide desktop controls
                 const mobileControls = document.querySelector('.mobile-controls');
                 const desktopControls = document.querySelector('.desktop-controls');
-                const touchIndicator = document.getElementById('touchIndicator');
                 
                 if (mobileControls) mobileControls.style.display = 'block';
                 if (desktopControls) desktopControls.style.display = 'none';
-                if (touchIndicator) touchIndicator.style.display = 'block';
-                
-                // Auto-hide touch indicator after 5 seconds
-                setTimeout(() => {
-                    if (touchIndicator) touchIndicator.style.opacity = '0';
-                }, 5000);
             }
         }
 
@@ -754,17 +747,7 @@
                 lastShakeTime = now;
                 randomizeParameters();
                 updateStatus('🎲 Shake detected - randomized!', 'success');
-                
-                // Show a brief visual feedback
-                const indicator = document.getElementById('touchIndicator');
-                if (indicator) {
-                    indicator.style.opacity = '1';
-                    indicator.textContent = '🎲 Randomized!';
-                    setTimeout(() => {
-                        indicator.textContent = '👆 Tap top/bottom to adjust • Swipe ←/→ to switch • Shake to randomize';
-                        indicator.style.opacity = '0.7';
-                    }, 2000);
-                }
+                showUI(); // Show parameter info after randomizing
             }
             
             lastAcceleration = {
@@ -836,6 +819,7 @@
                 
                 // Apply adjustment
                 adjustParameter(direction * steps * 0.1); // Smaller steps for smooth fading
+                showUI(); // Show parameter info while adjusting
                 
                 // Reset start position for continuous fading
                 touchStartY = touchEndY;
