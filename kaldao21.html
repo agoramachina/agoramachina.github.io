@@ -25,7 +25,6 @@
             font-size: 14px; 
             max-width: 400px; 
             transition: opacity 0.3s ease;
-            display: none; /* Hide UI completely */
         }
         .controls { 
             position: absolute; 
@@ -38,18 +37,7 @@
             transition: opacity 0.3s ease; 
         }
         .menu { 
-            position: absolute; 
-            top: 50%; 
-            left: 50%; 
-            transform: translate(-50%, -50%); 
-            background: rgba(0,0,0,0.95); 
-            padding: 20px; 
-            border-radius: 12px; 
-            border: 2px solid #444; 
-            max-width: 95vw; 
-            max-height: 90vh; 
-            overflow-y: auto; 
-            z-index: 1000; 
+            display: none; /* Hide menu completely */
         }
         .menu h2 { color: #4CAF50; margin-bottom: 20px; text-align: center; }
         .menu .section { margin-bottom: 15px; }
@@ -107,26 +95,7 @@
             transition: opacity 0.3s ease;
         }
 
-        /* Touch zone visual feedback */
-        .touch-zone-indicator {
-            position: absolute;
-            left: 0;
-            right: 0;
-            background: rgba(255, 255, 255, 0.1);
-            display: none;
-            pointer-events: none;
-            z-index: 100;
-        }
-
-        .touch-zone-top {
-            top: 0;
-            height: 50%;
-        }
-
-        .touch-zone-bottom {
-            bottom: 0;
-            height: 50%;
-        }
+        /* Touch zone visual feedback - removed since we're not using tap zones anymore */
 
         @media (max-width: 768px) {
             .touch-indicator {
@@ -161,7 +130,6 @@
         ESC Toggle all parameters<br>
         </span>
         <span class="mobile-controls" style="display: none;">
-        TAP: Toggle menu<br>
         SWIPE ←/→: Switch parameters<br>
         SWIPE ↑/↓: Adjust value (fader)<br>
         HOLD: Reset all parameters<br>
@@ -171,12 +139,8 @@
 
     <!-- Touch indicator for mobile -->
     <div class="touch-indicator" id="touchIndicator" style="display: none;">
-        👆 Tap to toggle menu • Swipe to control • Hold to reset • Shake to randomize
+        👆 Swipe to control • Hold to reset • Shake to randomize
     </div>
-
-    <!-- Touch zone indicators -->
-    <div class="touch-zone-indicator touch-zone-top" id="touchZoneTop"></div>
-    <div class="touch-zone-indicator touch-zone-bottom" id="touchZoneBottom"></div>
 
     <!-- All Parameters Display -->
     <div class="menu hidden" id="menu">
@@ -232,7 +196,10 @@
         // Controls menu auto-fade system
         let controlsVisible = true;
         let controlsFadeTimeout = null;
+        let uiVisible = false;
+        let uiFadeTimeout = null;
         const CONTROLS_FADE_DELAY = 3000; // 3 seconds
+        const UI_FADE_DELAY = 2000; // 2 seconds for parameter display
         
         // Mobile detection
         let isMobile = false;
@@ -894,8 +861,7 @@
             
             // Determine action based on gesture
             if (absDeltaX < SWIPE_THRESHOLD && absDeltaY < SWIPE_THRESHOLD && touchDuration < HOLD_DURATION) {
-                // Quick tap - toggle menu
-                toggleMenu();
+                // Quick tap - no action (menu removed)
             } else if (absDeltaX > absDeltaY && absDeltaX > SWIPE_THRESHOLD) {
                 // Horizontal swipe - switch parameters
                 if (deltaX > 0) {
@@ -1002,6 +968,33 @@
                 controlsVisible = false;
             }
         }
+
+        // UI parameter display functions
+        function showUI() {
+            const ui = document.getElementById('ui');
+            if (ui) {
+                ui.classList.remove('hidden');
+                uiVisible = true;
+                
+                // Clear existing timeout
+                if (uiFadeTimeout) {
+                    clearTimeout(uiFadeTimeout);
+                }
+                
+                // Set new timeout to hide UI
+                uiFadeTimeout = setTimeout(() => {
+                    hideUI();
+                }, UI_FADE_DELAY);
+            }
+        }
+        
+        function hideUI() {
+            const ui = document.getElementById('ui');
+            if (ui) {
+                ui.classList.add('hidden');
+                uiVisible = false;
+            }
+        }
         
         function resetControlsFadeTimer() {
             if (!menuVisible) {
@@ -1024,6 +1017,7 @@
                             } else {
                                 // In normal view: up/down adjusts values
                                 adjustParameter(1);
+                                showUI(); // Show parameter info when adjusting
                             }
                             break;
                         case 'ArrowDown':
@@ -1034,6 +1028,7 @@
                             } else {
                                 // In normal view: up/down adjusts values
                                 adjustParameter(-1);
+                                showUI(); // Show parameter info when adjusting
                             }
                             break;
                         case 'ArrowLeft':
@@ -1097,7 +1092,7 @@
                             break;
                         case 'Escape':
                             e.preventDefault();
-                            toggleMenu();
+                            // ESC functionality removed - no menu to toggle
                             break;
                         case 'KeyA':
                             e.preventDefault();
@@ -1150,13 +1145,22 @@
         }
 
         function updateStatus(message, type = 'info') {
-            // Status updates now only shown in console since UI panel is removed
-            console.log(`[${type.toUpperCase()}] ${message}`);
+            const statusDiv = document.getElementById('status');
+            if (statusDiv) {
+                statusDiv.className = type;
+                statusDiv.textContent = message;
+            }
         }
 
         function updateDisplay() {
-            // Update menu if visible (no more UI panel to update)
-            updateMenuDisplay();
+            const paramKey = parameterKeys[currentParameterIndex];
+            const param = parameters[paramKey];
+            const palette = colorPalettes[currentPaletteIndex];
+            
+            const paramDiv = document.getElementById('currentParam');
+            if (paramDiv) {
+                paramDiv.textContent = `${param.name}: ${param.value.toFixed(3)} | ${palette.name}${invertColors ? ' (Inverted)' : ''}`;
+            }
         }
 
         function adjustParameter(delta) {
@@ -1175,6 +1179,9 @@
         function switchParameter(delta) {
             currentParameterIndex = (currentParameterIndex + delta + parameterKeys.length) % parameterKeys.length;
             updateDisplay();
+            
+            // Show UI when switching parameters
+            showUI();
         }
 
         function randomizeColors() {
@@ -1274,89 +1281,11 @@
         function restoreState(state) {}
 
         function toggleMenu() {
-            menuVisible = !menuVisible;
-            const menu = document.getElementById('menu');
-            const controls = document.getElementById('controls');
-            
-            if (menuVisible) {
-                menu.classList.remove('hidden');
-                controls.classList.add('hidden');
-                updateMenuDisplay();
-            } else {
-                menu.classList.add('hidden');
-                showControls();
-            }
+            // Menu functionality removed - no menu to toggle
         }
 
         function updateMenuDisplay() {
-            if (!menuVisible) return;
-            
-            const allParamsList = document.getElementById('allParametersList');
-            if (allParamsList) {
-                let paramsHTML = '';
-                
-                paramsHTML += '<div style="color: #4CAF50; font-weight: bold; margin-bottom: 5px;">MOVEMENT & ANIMATION</div>';
-                const movementParams = ['fly_speed', 'rotation_speed', 'plane_rotation_speed', 'zoom_level'];
-                movementParams.forEach(key => {
-                    const param = parameters[key];
-                    const index = parameterKeys.indexOf(key);
-                    const isCurrent = index === currentParameterIndex;
-                    const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : 'color: #ffffff;';
-                    paramsHTML += `<div style="${style}">${param.name}: ${param.value.toFixed(3)}</div>`;
-                });
-                
-                paramsHTML += '<br><div style="color: #FFC107; font-weight: bold; margin-bottom: 5px;">PATTERN & VISUAL</div>';
-                const patternParams = ['kaleidoscope_segments', 'truchet_radius', 'center_fill_radius', 'layer_count', 'contrast', 'color_intensity'];
-                patternParams.forEach(key => {
-                    const param = parameters[key];
-                    const index = parameterKeys.indexOf(key);
-                    const isCurrent = index === currentParameterIndex;
-                    const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : 'color: #ffffff;';
-                    const value = key === 'kaleidoscope_segments' || key === 'layer_count' ? 
-                        param.value.toFixed(0) : param.value.toFixed(3);
-                    paramsHTML += `<div style="${style}">${param.name}: ${value}</div>`;
-                });
-                
-                paramsHTML += '<br><div style="color: #9C27B0; font-weight: bold; margin-bottom: 5px;">CAMERA & PATH</div>';
-                const cameraParams = ['camera_tilt_x', 'camera_tilt_y', 'camera_roll', 'path_stability', 'path_scale'];
-                cameraParams.forEach(key => {
-                    const param = parameters[key];
-                    const index = parameterKeys.indexOf(key);
-                    const isCurrent = index === currentParameterIndex;
-                    const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : 'color: #ffffff;';
-                    paramsHTML += `<div style="${style}">${param.name}: ${param.value.toFixed(3)}</div>`;
-                });
-                
-                paramsHTML += '<br><div style="color: #FF5722; font-weight: bold; margin-bottom: 5px;">COLOR & SPEED</div>';
-                const colorParams = ['color_speed'];
-                colorParams.forEach(key => {
-                    const param = parameters[key];
-                    const index = parameterKeys.indexOf(key);
-                    const isCurrent = index === currentParameterIndex;
-                    const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : 'color: #ffffff;';
-                    paramsHTML += `<div style="${style}">${param.name}: ${param.value.toFixed(3)}</div>`;
-                });
-                
-                allParamsList.innerHTML = paramsHTML;
-            }
-            
-            const allPalettesList = document.getElementById('allPalettesList');
-            if (allPalettesList) {
-                let palettesHTML = '';
-                colorPalettes.forEach((palette, index) => {
-                    const isCurrent = index === currentPaletteIndex;
-                    const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : 'color: #ffffff;';
-                    const inverted = isCurrent && invertColors ? ' (Inverted)' : '';
-                    const active = isCurrent && useColorPalette ? ' ●' : (isCurrent ? ' ○' : '');
-                    palettesHTML += `<div style="${style}">${palette.name}${inverted}${active}</div>`;
-                });
-                allPalettesList.innerHTML = palettesHTML;
-            }
-            
-            const allAudioStatus = document.getElementById('allAudioStatus');
-            if (allAudioStatus) {
-                allAudioStatus.innerHTML = '🎵 No audio file loaded<br>🎤 Microphone: OFF<br>🔊 Audio Reactive: OFF<br><em>Audio features not implemented</em>';
-            }
+            // Menu functionality removed - no menu to update
         }
 
         function saveParameters() {
