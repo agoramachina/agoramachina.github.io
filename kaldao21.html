@@ -24,7 +24,8 @@
             border-radius: 8px; 
             font-size: 14px; 
             max-width: 400px; 
-            transition: opacity 0.3s ease; 
+            transition: opacity 0.3s ease;
+            display: none; /* Hide UI completely */
         }
         .controls { 
             position: absolute; 
@@ -139,12 +140,6 @@
 <body>
     <canvas id="canvas"></canvas>
     
-    <div class="ui" id="ui">
-        <h3>Kaldao Fractal Visualizer</h3>
-        <div id="status">Loading...</div>
-        <div id="currentParam">Parameter: Loading...</div>
-    </div>
-    
     <div class="controls" id="controls">
         <strong>CONTROLS</strong><br>
         <span class="desktop-controls">
@@ -166,15 +161,17 @@
         ESC Toggle all parameters<br>
         </span>
         <span class="mobile-controls" style="display: none;">
-        TAP: Top half = increase • Bottom half = decrease<br>
+        TAP: Toggle menu<br>
         SWIPE ←/→: Switch parameters<br>
+        SWIPE ↑/↓: Adjust value (fader)<br>
+        HOLD: Reset all parameters<br>
         SHAKE: Randomize all parameters<br>
         </span>
     </div>
 
     <!-- Touch indicator for mobile -->
     <div class="touch-indicator" id="touchIndicator" style="display: none;">
-        👆 Tap top/bottom to adjust • Swipe ←/→ to switch • Shake to randomize
+        👆 Tap to toggle menu • Swipe to control • Hold to reset • Shake to randomize
     </div>
 
     <!-- Touch zone indicators -->
@@ -244,7 +241,11 @@
         let touchEndX = 0;
         let touchEndY = 0;
         let isTouch = false;
-        const SWIPE_THRESHOLD = 50; // minimum distance for swipe
+        let touchStartTime = 0;
+        let holdTimeout = null;
+        const SWIPE_THRESHOLD = 30; // minimum distance for swipe
+        const HOLD_DURATION = 800; // ms to trigger hold action
+        const FADER_SENSITIVITY = 3; // pixels per adjustment step
         
         // Shake detection
         let lastShakeTime = 0;
@@ -812,21 +813,31 @@
             const touch = e.touches[0];
             touchStartX = touch.clientX;
             touchStartY = touch.clientY;
+            touchStartTime = Date.now();
             isTouch = true;
             
-            // Show visual feedback for touch zones
-            const screenHeight = window.innerHeight;
-            const tapY = touchStartY;
-            const topZone = document.getElementById('touchZoneTop');
-            const bottomZone = document.getElementById('touchZoneBottom');
-            
-            if (tapY < screenHeight * 0.5 && topZone) {
-                topZone.style.display = 'block';
-                topZone.style.background = 'rgba(76, 175, 80, 0.2)'; // Green for increase
-            } else if (bottomZone) {
-                bottomZone.style.display = 'block';
-                bottomZone.style.background = 'rgba(244, 67, 54, 0.2)'; // Red for decrease
-            }
+            // Start hold timer
+            holdTimeout = setTimeout(() => {
+                if (isTouch) {
+                    // Trigger hold action - reset all parameters
+                    resetAllParameters();
+                    updateStatus('🔄 Hold detected - all parameters reset!', 'success');
+                    
+                    // Show visual feedback
+                    const indicator = document.getElementById('touchIndicator');
+                    if (indicator) {
+                        indicator.style.opacity = '1';
+                        indicator.textContent = '🔄 All Parameters Reset!';
+                        setTimeout(() => {
+                            indicator.textContent = '👆 Tap to toggle menu • Swipe to control • Hold to reset • Shake to randomize';
+                            indicator.style.opacity = '0.7';
+                        }, 2000);
+                    }
+                    
+                    // Prevent other actions
+                    isTouch = false;
+                }
+            }, HOLD_DURATION);
             
             // Show controls on touch
             resetControlsFadeTimer();
@@ -838,35 +849,53 @@
             const touch = e.touches[0];
             touchEndX = touch.clientX;
             touchEndY = touch.clientY;
-        }
-
-        function handleTouchEnd(e) {
-            if (!isMobile || !isTouch) return;
             
-            // Hide touch zone indicators
-            const topZone = document.getElementById('touchZoneTop');
-            const bottomZone = document.getElementById('touchZoneBottom');
-            if (topZone) topZone.style.display = 'none';
-            if (bottomZone) bottomZone.style.display = 'none';
-            
+            // Check if we've moved enough to be considered a swipe/fader
             const deltaX = touchEndX - touchStartX;
             const deltaY = touchEndY - touchStartY;
             const absDeltaX = Math.abs(deltaX);
             const absDeltaY = Math.abs(deltaY);
             
-            // Determine if it's a tap or swipe
-            if (absDeltaX < SWIPE_THRESHOLD && absDeltaY < SWIPE_THRESHOLD) {
-                // Tap - check if top or bottom half of screen
-                const screenHeight = window.innerHeight;
-                const tapY = touchStartY;
+            // If we're moving, cancel the hold timer
+            if ((absDeltaX > 10 || absDeltaY > 10) && holdTimeout) {
+                clearTimeout(holdTimeout);
+                holdTimeout = null;
+            }
+            
+            // Implement fader for vertical movement
+            if (absDeltaY > absDeltaX && absDeltaY > FADER_SENSITIVITY) {
+                const steps = Math.floor(absDeltaY / FADER_SENSITIVITY);
+                const direction = deltaY < 0 ? 1 : -1; // up = increase, down = decrease
                 
-                if (tapY < screenHeight * 0.5) {
-                    // Top half - increase parameter
-                    adjustParameter(1);
-                } else {
-                    // Bottom half - decrease parameter
-                    adjustParameter(-1);
-                }
+                // Apply adjustment
+                adjustParameter(direction * steps * 0.1); // Smaller steps for smooth fading
+                
+                // Reset start position for continuous fading
+                touchStartY = touchEndY;
+            }
+        }
+
+        function handleTouchEnd(e) {
+            if (!isMobile) return;
+            
+            // Clear hold timer
+            if (holdTimeout) {
+                clearTimeout(holdTimeout);
+                holdTimeout = null;
+            }
+            
+            if (!isTouch) return;
+            
+            const deltaX = touchEndX - touchStartX;
+            const deltaY = touchEndY - touchStartY;
+            const absDeltaX = Math.abs(deltaX);
+            const absDeltaY = Math.abs(deltaY);
+            const touchDuration = Date.now() - touchStartTime;
+            
+            // Determine action based on gesture
+            if (absDeltaX < SWIPE_THRESHOLD && absDeltaY < SWIPE_THRESHOLD && touchDuration < HOLD_DURATION) {
+                // Quick tap - toggle menu
+                toggleMenu();
             } else if (absDeltaX > absDeltaY && absDeltaX > SWIPE_THRESHOLD) {
                 // Horizontal swipe - switch parameters
                 if (deltaX > 0) {
@@ -875,12 +904,14 @@
                     switchParameter(-1); // Swipe left
                 }
             }
+            // Vertical swipes are handled continuously in handleTouchMove for fader behavior
             
             isTouch = false;
             touchStartX = 0;
             touchStartY = 0;
             touchEndX = 0;
             touchEndY = 0;
+            touchStartTime = 0;
         }
 
         function setupShaders() {
@@ -950,7 +981,6 @@
             const controls = document.getElementById('controls');
             if (controls && !menuVisible) {
                 controls.classList.remove('hidden');
-                ui.classList.remove('hidden');
                 controlsVisible = true;
                 
                 // Clear existing timeout
@@ -970,7 +1000,6 @@
             if (controls && !menuVisible) {
                 controls.classList.add('hidden');
                 controlsVisible = false;
-                ui.classList.add('hidden');
             }
         }
         
@@ -1121,24 +1150,12 @@
         }
 
         function updateStatus(message, type = 'info') {
-            const statusDiv = document.getElementById('status');
-            if (statusDiv) {
-                statusDiv.className = type;
-                statusDiv.textContent = message;
-            }
+            // Status updates now only shown in console since UI panel is removed
+            console.log(`[${type.toUpperCase()}] ${message}`);
         }
 
         function updateDisplay() {
-            const paramKey = parameterKeys[currentParameterIndex];
-            const param = parameters[paramKey];
-            const palette = colorPalettes[currentPaletteIndex];
-            
-            const paramDiv = document.getElementById('currentParam');
-            if (paramDiv) {
-                paramDiv.textContent = `${param.name}: ${param.value.toFixed(3)} | ${palette.name}${invertColors ? ' (Inverted)' : ''}`;
-            }
-            
-            // Update menu if visible
+            // Update menu if visible (no more UI panel to update)
             updateMenuDisplay();
         }
 
@@ -1259,17 +1276,14 @@
         function toggleMenu() {
             menuVisible = !menuVisible;
             const menu = document.getElementById('menu');
-            const ui = document.getElementById('ui');
             const controls = document.getElementById('controls');
             
             if (menuVisible) {
                 menu.classList.remove('hidden');
-                ui.classList.add('hidden');
                 controls.classList.add('hidden');
                 updateMenuDisplay();
             } else {
                 menu.classList.add('hidden');
-                ui.classList.remove('hidden');
                 showControls();
             }
         }
