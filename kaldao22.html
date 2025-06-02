@@ -1,102 +1,4 @@
-function updateMenuDisplay() {
-            if (!menuVisible) return;
-            
-            // Update ALL parameters list with organized categories
-            const allParamsList = document.getElementById('allParametersList');
-            if (allParamsList) {
-                let paramsHTML = '';
-                
-                // Movement & Animation
-                paramsHTML += '<div style="color: #4CAF50; font-weight: bold; margin-bottom: 5px;">MOVEMENT & ANIMATION</div>';
-                const movementParams = ['fly_speed', 'rotation_speed', 'plane_rotation_speed', 'zoom_level'];
-                movementParams.forEach(key => {
-                    if (parameters[key]) {
-                        const param = parameters[key];
-                        const index = parameterKeys.indexOf(key);
-                        const isCurrent = index === currentParameterIndex;
-                        const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : 'color: #ffffff;';
-                        paramsHTML += `<div style="${style}">${param.name}: ${param.value.toFixed(3)}</div>`;
-                    }
-                });
-                
-                paramsHTML += '<br>';
-                
-                // Pattern & Visual
-                paramsHTML += '<div style="color: #FFC107; font-weight: bold; margin-bottom: 5px;">PATTERN & VISUAL</div>';
-                const patternParams = ['kaleidoscope_segments', 'truchet_radius', 'center_fill_radius', 'layer_count', 'contrast', 'color_intensity'];
-                patternParams.forEach(key => {
-                    if (parameters[key]) {
-                        const param = parameters[key];
-                        const index = parameterKeys.indexOf(key);
-                        const isCurrent = index === currentParameterIndex;
-                        const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : 'color: #ffffff;';
-                        const value = key === 'kaleidoscope_segments' || key === 'layer_count' ? 
-                            param.value.toFixed(0) : param.value.toFixed(3);
-                        paramsHTML += `<div style="${style}">${param.name}: ${value}</div>`;
-                    }
-                });
-                
-                paramsHTML += '<br>';
-                
-                // Camera & Path
-                paramsHTML += '<div style="color: #9C27B0; font-weight: bold; margin-bottom: 5px;">CAMERA & PATH</div>';
-                const cameraParams = ['camera_tilt_x', 'camera_tilt_y', 'camera_roll', 'path_stability', 'path_scale'];
-                cameraParams.forEach(key => {
-                    if (parameters[key]) {
-                        const param = parameters[key];
-                        const index = parameterKeys.indexOf(key);
-                        const isCurrent = index === currentParameterIndex;
-                        const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : 'color: #ffffff;';
-                        paramsHTML += `<div style="${style}">${param.name}: ${param.value.toFixed(3)}</div>`;
-                    }
-                });
-                
-                paramsHTML += '<br>';
-                
-                // Color & Animation Speed
-                paramsHTML += '<div style="color: #FF5722; font-weight: bold; margin-bottom: 5px;">COLOR & SPEED</div>';
-                const colorParams = ['color_speed'];
-                colorParams.forEach(key => {
-                    if (parameters[key]) {
-                        const param = parameters[key];
-                        const index = parameterKeys.indexOf(key);
-                        const isCurrent = index === currentParameterIndex;
-                        const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : 'color: #ffffff;';
-                        paramsHTML += `<div style="${style}">${param.name}: ${param.value.toFixed(3)}</div>`;
-                    }
-                });
-                
-                allParamsList.innerHTML = paramsHTML;
-            }
-            
-            // Update palettes list
-            const allPalettesList = document.getElementById('allPalettesList');
-            if (allPalettesList) {
-                let palettesHTML = '';
-                colorPalettes.forEach((palette, index) => {
-                    const isCurrent = index === currentPaletteIndex;
-                    const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : 'color: #ffffff;';
-                    const inverted = isCurrent && invertColors ? ' (Inverted)' : '';
-                    const active = isCurrent && useColorPalette ? ' ●' : (isCurrent ? ' ○' : '');
-                    palettesHTML += `<div style="${style}">${palette.name}${inverted}${active}</div>`;
-                });
-                allPalettesList.innerHTML = palettesHTML;
-            }
-            
-            // Update audio status
-            const allAudioStatus = document.getElementById('allAudioStatus');
-            if (allAudioStatus) {
-                if (microphoneActive) {
-                    allAudioStatus.innerHTML = '🎤 <span style="color: #4CAF50;">Microphone Active</span><br>🔊 Audio Reactive: ON<br><em>Press M to stop</em>';
-                } else if (!audioElement) {
-                    allAudioStatus.innerHTML = '🎵 No audio file loaded<br>🎤 Microphone: OFF<br>🔊 Audio Reactive: OFF<br><em>Press A for file, M for mic</em>';
-                } else {
-                    const playStatus = audioPlaying ? '<span style="color: #4CAF50;">Playing</span>' : '<span style="color: #FF9800;">Paused</span>';
-                    const reactiveStatus = audioReactive ? '<span style="color: #4CAF50;">ON</span>' : '<span style="color: #FF9800;">OFF</span>';
-                    allAudioStatus.innerHTML = `🎵 File: ${playStatus}<br>🎤 Microphone: OFF<br>🔊 Audio Reactive: ${reactiveStatus}<br><em>Press A to toggle, M for mic</em>`;
-                }
-            }
-        }<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -143,7 +45,7 @@ function updateMenuDisplay() {
         M Toggle microphone<br>
         Ctrl+Z Undo<br>
         Ctrl+Y Redo<br>
-        ESC Toggle all UI<br>
+        ESC Toggle all parameters<br>
     </div>
 
     <!-- All Parameters Display -->
@@ -183,7 +85,7 @@ function updateMenuDisplay() {
         </div>
         
         <div style="text-align: center; margin-top: 15px; opacity: 0.7; font-size: 12px;">
-            Press ESC to hide all UI • Current parameter highlighted in green
+            Press ESC to close • Current parameter highlighted in green
         </div>
     </div>
 
@@ -1097,16 +999,14 @@ function updateMenuDisplay() {
             const controls = document.getElementById('controls');
             
             if (menuVisible) {
-                // Show everything
                 menu.classList.remove('hidden');
-                ui.classList.remove('hidden');
-                controls.classList.remove('hidden');
-                updateMenuDisplay();
-            } else {
-                // Hide everything - clean view
-                menu.classList.add('hidden');
                 ui.classList.add('hidden');
                 controls.classList.add('hidden');
+                updateMenuDisplay();
+            } else {
+                menu.classList.add('hidden');
+                ui.classList.remove('hidden');
+                controls.classList.remove('hidden');
             }
         }
 
