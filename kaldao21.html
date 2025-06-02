@@ -673,6 +673,9 @@
                 // Start controls auto-fade timer
                 showControls();
                 
+                // Initially hide the UI panel
+                hideUI();
+                
                 render();
                 
             } catch (error) {
@@ -1158,6 +1161,9 @@
             }
             
             updateDisplay();
+            
+            // Show UI when adjusting parameters
+            showUI();
         }
 
         function switchParameter(delta) {
@@ -1183,6 +1189,7 @@
             }
             
             updateDisplay();
+            showUI(); // Show UI when randomizing colors
         }
 
         function resetToBlackWhite() {
@@ -1190,11 +1197,13 @@
             useColorPalette = false;
             invertColors = false;
             updateDisplay();
+            showUI(); // Show UI when resetting colors
         }
 
         function toggleInvertColors() {
             invertColors = !invertColors;
             updateDisplay();
+            showUI(); // Show UI when inverting colors
         }
 
         function randomizeParameters() {
@@ -1215,6 +1224,7 @@
             });
             
             updateDisplay();
+            showUI(); // Show UI when randomizing parameters
         }
 
         function resetCurrentParameter() {
@@ -1234,6 +1244,7 @@
             }
             
             updateDisplay();
+            showUI(); // Show UI when resetting current parameter
         }
 
         function resetAllParameters() {
@@ -1256,7 +1267,7 @@
             invertColors = false;
             
             updateDisplay();
-            updateMenuDisplay();
+            showUI(); // Show UI when resetting all parameters
         }
 
         function saveStateForUndo() {}
