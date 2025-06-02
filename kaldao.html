@@ -41,6 +41,9 @@
         Space Pause<br>
         S Save parameters<br>
         L Load parameters<br>
+        A Upload audio file<br>
+        Ctrl+Z Undo<br>
+        Ctrl+Y Redo<br>
         ESC Toggle menu<br>
     </div>
 
@@ -78,6 +81,13 @@
             S - Save parameters to file<br>
             L - Load parameters from file<br><br>
             
+            <strong>Audio:</strong><br>
+            A - Upload audio file & toggle reactivity<br><br>
+            
+            <strong>Undo/Redo:</strong><br>
+            Ctrl+Z - Undo last change<br>
+            Ctrl+Y - Redo last undone change<br><br>
+            
             <strong>Menu:</strong><br>
             ESC - Toggle this menu<br>
         </div>
@@ -85,6 +95,11 @@
         <div class="section">
             <h3>🎨 Available Color Palettes</h3>
             <div id="menuPalettesList">Loading...</div>
+        </div>
+        
+        <div class="section">
+            <h3>🎵 Audio Status</h3>
+            <div id="menuAudioStatus">No audio loaded</div>
         </div>
         
         <div style="text-align: center; margin-top: 20px; opacity: 0.7;">
@@ -101,6 +116,21 @@
         let useColorPalette = false;
         let invertColors = false;
         let menuVisible = false;
+        
+        // Audio system
+        let audioContext = null;
+        let audioSource = null;
+        let analyser = null;
+        let audioData = null;
+        let audioElement = null;
+        let audioReactive = false;
+        let audioPlaying = false;
+        let baseParameterValues = {};
+
+        // Undo/Redo system
+        let undoStack = [];
+        let redoStack = [];
+        const maxUndoSteps = 50;
 
         // Parameters - exact match to Godot
         const parameters = {
@@ -650,6 +680,22 @@
                             e.preventDefault();
                             toggleMenu();
                             break;
+                        case 'KeyA':
+                            e.preventDefault();
+                            toggleAudio();
+                            break;
+                        case 'KeyZ':
+                            e.preventDefault();
+                            if (e.ctrlKey || e.metaKey) {
+                                undo();
+                            }
+                            break;
+                        case 'KeyY':
+                            e.preventDefault();
+                            if (e.ctrlKey || e.metaKey) {
+                                redo();
+                            }
+                            break;
                     }
                 } catch (error) {
                     updateStatus(`Input error: ${error.message}`, 'error');
@@ -688,6 +734,9 @@
         }
 
         function adjustParameter(delta) {
+            // Save current state before making changes
+            saveStateForUndo();
+            
             const paramKey = parameterKeys[currentParameterIndex];
             const param = parameters[paramKey];
             
@@ -706,6 +755,9 @@
         }
 
         function randomizeColors() {
+            // Save current state before making changes
+            saveStateForUndo();
+            
             const palette = colorPalettes[currentPaletteIndex];
             for (let i = 0; i < 3; i++) {
                 palette.a[i] = Math.random();
@@ -723,6 +775,9 @@
         }
 
         function resetToBlackWhite() {
+            // Save current state before making changes
+            saveStateForUndo();
+            
             currentPaletteIndex = 0;
             useColorPalette = false;
             invertColors = false;
@@ -730,24 +785,58 @@
         }
 
         function toggleInvertColors() {
+            // Save current state before making changes
+            saveStateForUndo();
+            
             invertColors = !invertColors;
             updateDisplay();
         }
 
         function randomizeParameters() {
+            // Save current state before making changes
+            saveStateForUndo();
+            
             const excludeParams = ['color_intensity', 'color_speed'];
+            
+            // Define reasonable randomization ranges (subset of full parameter ranges)
+            const randomRanges = {
+                fly_speed: { min: -1.0, max: 2.0 },
+                contrast: { min: 0.5, max: 3.0 },
+                kaleidoscope_segments: { min: 6.0, max: 32.0 },
+                truchet_radius: { min: 0.1, max: 0.8 },
+                center_fill_radius: { min: -0.5, max: 0.5 },
+                layer_count: { min: 4, max: 8 },
+                rotation_speed: { min: -2.0, max: 2.0 },
+                zoom_level: { min: 0.1, max: 2.0 },
+                plane_rotation_speed: { min: -2.0, max: 2.0 },
+                camera_tilt_x: { min: -3.0, max: 3.0 },
+                camera_tilt_y: { min: -3.0, max: 3.0 },
+                camera_roll: { min: -1.0, max: 1.0 },
+                path_stability: { min: -0.5, max: 1.0 },
+                path_scale: { min: 0.5, max: 2.0 }
+            };
             
             Object.keys(parameters).forEach(key => {
                 if (excludeParams.includes(key)) return;
                 
                 const param = parameters[key];
-                param.value = Math.random() * (param.max - param.min) + param.min;
+                const range = randomRanges[key];
+                
+                if (range) {
+                    // Use reasonable range for randomization
+                    param.value = Math.random() * (range.max - range.min) + range.min;
+                } else {
+                    // Fallback to full range if not specified
+                    param.value = Math.random() * (param.max - param.min) + param.min;
+                }
+                
                 param.value = Math.round(param.value / param.step) * param.step;
                 
                 if (key === 'kaleidoscope_segments') {
                     param.value = Math.round(param.value / 2) * 2;
                 }
                 
+                // Clamp to actual parameter bounds
                 param.value = Math.max(param.min, Math.min(param.max, param.value));
             });
             
@@ -755,6 +844,9 @@
         }
 
         function resetCurrentParameter() {
+            // Save current state before making changes
+            saveStateForUndo();
+            
             const paramKey = parameterKeys[currentParameterIndex];
             const param = parameters[paramKey];
             
@@ -774,6 +866,9 @@
         }
 
         function resetAllParameters() {
+            // Save current state before making changes
+            saveStateForUndo();
+            
             Object.keys(parameters).forEach(key => {
                 const defaults = {
                     fly_speed: 0.25, contrast: 1.0, kaleidoscope_segments: 10.0,
@@ -791,6 +886,116 @@
             currentPaletteIndex = 0;
             useColorPalette = false;
             invertColors = false;
+            
+            updateDisplay();
+            updateMenuDisplay();
+        }
+
+        // Undo/Redo System Functions
+        function saveStateForUndo() {
+            // Create a snapshot of the current state
+            const state = {
+                parameters: {},
+                currentPaletteIndex: currentPaletteIndex,
+                useColorPalette: useColorPalette,
+                invertColors: invertColors,
+                palettes: JSON.parse(JSON.stringify(colorPalettes)) // Deep copy
+            };
+            
+            // Copy parameter values
+            Object.keys(parameters).forEach(key => {
+                state.parameters[key] = parameters[key].value;
+            });
+            
+            // Add to undo stack
+            undoStack.push(state);
+            
+            // Limit stack size
+            if (undoStack.length > maxUndoSteps) {
+                undoStack.shift();
+            }
+            
+            // Clear redo stack when new action is performed
+            redoStack = [];
+        }
+
+        function undo() {
+            if (undoStack.length === 0) {
+                updateStatus('Nothing to undo', 'info');
+                return;
+            }
+            
+            // Save current state to redo stack
+            const currentState = {
+                parameters: {},
+                currentPaletteIndex: currentPaletteIndex,
+                useColorPalette: useColorPalette,
+                invertColors: invertColors,
+                palettes: JSON.parse(JSON.stringify(colorPalettes))
+            };
+            
+            Object.keys(parameters).forEach(key => {
+                currentState.parameters[key] = parameters[key].value;
+            });
+            
+            redoStack.push(currentState);
+            
+            // Restore previous state
+            const previousState = undoStack.pop();
+            restoreState(previousState);
+            
+            updateStatus(`⟲ Undone (${undoStack.length} steps remaining)`, 'success');
+        }
+
+        function redo() {
+            if (redoStack.length === 0) {
+                updateStatus('Nothing to redo', 'info');
+                return;
+            }
+            
+            // Save current state to undo stack
+            const currentState = {
+                parameters: {},
+                currentPaletteIndex: currentPaletteIndex,
+                useColorPalette: useColorPalette,
+                invertColors: invertColors,
+                palettes: JSON.parse(JSON.stringify(colorPalettes))
+            };
+            
+            Object.keys(parameters).forEach(key => {
+                currentState.parameters[key] = parameters[key].value;
+            });
+            
+            undoStack.push(currentState);
+            
+            // Restore next state
+            const nextState = redoStack.pop();
+            restoreState(nextState);
+            
+            updateStatus(`⟳ Redone (${redoStack.length} steps available)`, 'success');
+        }
+
+        function restoreState(state) {
+            // Restore parameters
+            Object.keys(state.parameters).forEach(key => {
+                if (parameters[key]) {
+                    parameters[key].value = state.parameters[key];
+                }
+            });
+            
+            // Restore color palette state
+            currentPaletteIndex = state.currentPaletteIndex;
+            useColorPalette = state.useColorPalette;
+            invertColors = state.invertColors;
+            
+            // Restore palette data
+            if (state.palettes) {
+                state.palettes.forEach((palette, index) => {
+                    if (colorPalettes[index]) {
+                        colorPalettes[index] = { ...palette };
+                    }
+                });
+            }
             
             updateDisplay();
             updateMenuDisplay();
@@ -841,6 +1046,18 @@
                     palettesHTML += `<div style="${style}">${palette.name}${inverted}</div>`;
                 });
                 palettesList.innerHTML = palettesHTML;
+            }
+            
+            // Update audio status
+            const audioStatus = document.getElementById('menuAudioStatus');
+            if (audioStatus) {
+                if (!audioElement) {
+                    audioStatus.innerHTML = '🎵 No audio loaded<br><em>Press A to upload audio file</em>';
+                } else {
+                    const status = audioPlaying ? '▶️ Playing' : '⏸️ Paused';
+                    const reactive = audioReactive ? ' (Reactive)' : '';
+                    audioStatus.innerHTML = `${status}${reactive}<br><em>Press A to toggle</em>`;
+                }
             }
         }
 
@@ -957,9 +1174,260 @@
             }
         }
 
+        async function toggleAudio() {
+            if (!audioContext) {
+                await initAudioContext();
+            }
+            
+            if (!audioElement) {
+                // Prompt user to upload audio file
+                uploadAudioFile();
+            } else {
+                // Toggle audio playback and reactivity
+                if (audioPlaying) {
+                    audioElement.pause();
+                    audioPlaying = false;
+                    audioReactive = false;
+                    restoreBaseParameters();
+                    updateStatus('🎵 Audio paused', 'info');
+                } else {
+                    try {
+                        // Resume audio context if needed
+                        if (audioContext.state === 'suspended') {
+                            await audioContext.resume();
+                        }
+                        
+                        await audioElement.play();
+                        audioPlaying = true;
+                        audioReactive = true;
+                        storeBaseParameters();
+                        updateStatus('🎵 Audio playing with reactivity!', 'success');
+                    } catch (error) {
+                        updateStatus(`❌ Audio playback failed: ${error.message}`, 'error');
+                    }
+                }
+                updateMenuDisplay();
+            }
+        }
+
+        async function initAudioContext() {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Resume context if suspended (required by some browsers)
+                if (audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                }
+                
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 2048;
+                analyser.smoothingTimeConstant = 0.8;
+                audioData = new Uint8Array(analyser.frequencyBinCount);
+                
+                updateStatus('🎵 Audio system initialized', 'success');
+            } catch (error) {
+                updateStatus(`❌ Audio init failed: ${error.message}`, 'error');
+            }
+        }
+
+        function uploadAudioFile() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'audio/*,.wav,.mp3,.ogg,.m4a,.aac';
+            
+            input.onchange = async function(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                updateStatus(`🎵 Loading audio: ${file.name}...`, 'info');
+                
+                try {
+                    // Clean up previous audio
+                    if (audioElement) {
+                        audioElement.pause();
+                        audioElement.src = '';
+                        audioElement = null;
+                    }
+                    
+                    if (audioSource) {
+                        audioSource.disconnect();
+                        audioSource = null;
+                    }
+                    
+                    // Create new audio element
+                    audioElement = new Audio();
+                    audioElement.preload = 'auto';
+                    audioElement.loop = true;
+                    
+                    // Create object URL
+                    const audioURL = URL.createObjectURL(file);
+                    audioElement.src = audioURL;
+                    
+                    // Wait for audio to load
+                    await new Promise((resolve, reject) => {
+                        audioElement.oncanplaythrough = resolve;
+                        audioElement.onerror = () => reject(new Error('Failed to decode audio file'));
+                        audioElement.onabort = () => reject(new Error('Audio loading aborted'));
+                        
+                        // Timeout after 10 seconds
+                        setTimeout(() => reject(new Error('Audio loading timeout')), 10000);
+                    });
+                    
+                    // Resume audio context if needed
+                    if (audioContext.state === 'suspended') {
+                        await audioContext.resume();
+                    }
+                    
+                    // Connect audio to analyser
+                    audioSource = audioContext.createMediaElementSource(audioElement);
+                    audioSource.connect(analyser);
+                    audioSource.connect(audioContext.destination);
+                    
+                    updateStatus(`🎵 Audio loaded: ${file.name}`, 'success');
+                    updateMenuDisplay();
+                    
+                    // Auto-start playback with reactivity
+                    try {
+                        await audioElement.play();
+                        audioPlaying = true;
+                        audioReactive = true;
+                        storeBaseParameters();
+                        updateStatus(`🎵 Playing: ${file.name} (Reactive mode)`, 'success');
+                    } catch (playError) {
+                        updateStatus(`⚠️ Audio loaded but autoplay blocked. Press A to play.`, 'info');
+                    }
+                    
+                } catch (error) {
+                    console.error('Audio loading error:', error);
+                    updateStatus(`❌ Failed to load audio: ${error.message}`, 'error');
+                    
+                    // Clean up on error
+                    if (audioElement) {
+                        audioElement.src = '';
+                        audioElement = null;
+                    }
+                    if (audioSource) {
+                        audioSource.disconnect();
+                        audioSource = null;
+                    }
+                }
+            };
+            
+            input.click();
+        }
+
+        function storeBaseParameters() {
+            // Store current parameter values as base values for audio reactivity
+            baseParameterValues = {};
+            Object.keys(parameters).forEach(key => {
+                baseParameterValues[key] = parameters[key].value;
+            });
+        }
+
+        function restoreBaseParameters() {
+            // Restore parameters to their base values
+            Object.keys(baseParameterValues).forEach(key => {
+                if (parameters[key]) {
+                    parameters[key].value = baseParameterValues[key];
+                }
+            });
+            updateDisplay();
+        }
+
+        function analyzeAudio() {
+            if (!analyser || !audioData || !audioReactive || !audioPlaying) {
+                return { bass: 0, mid: 0, treble: 0, overall: 0 };
+            }
+            
+            analyser.getByteFrequencyData(audioData);
+            
+            // Frequency ranges (approximate for 44.1kHz sample rate)
+            const bassRange = { start: 0, end: 32 };      // ~20-250Hz
+            const midRange = { start: 32, end: 128 };     // ~250-2000Hz  
+            const trebleRange = { start: 128, end: 256 }; // ~2000-8000Hz
+            
+            function getAverageVolume(range) {
+                let sum = 0;
+                for (let i = range.start; i < range.end && i < audioData.length; i++) {
+                    sum += audioData[i];
+                }
+                return sum / (range.end - range.start) / 255.0;
+            }
+            
+            const bass = getAverageVolume(bassRange);
+            const mid = getAverageVolume(midRange);
+            const treble = getAverageVolume(trebleRange);
+            const overall = (bass + mid + treble) / 3.0;
+            
+            return { bass, mid, treble, overall };
+        }
+
+        function applyAudioReactivity() {
+            if (!audioReactive || !audioPlaying) return;
+            
+            const audioLevels = analyzeAudio();
+            
+            // Apply audio modulation to parameters (relative to base values)
+            const bassInfluence = audioLevels.bass * 2.0;
+            const midInfluence = audioLevels.mid * 1.5;
+            const trebleInfluence = audioLevels.treble * 1.0;
+            
+            // Bass affects truchet radius and zoom
+            if (baseParameterValues.truchet_radius !== undefined) {
+                const baseRadius = baseParameterValues.truchet_radius;
+                parameters.truchet_radius.value = baseRadius + (bassInfluence * 0.3);
+                parameters.truchet_radius.value = Math.max(parameters.truchet_radius.min, 
+                    Math.min(parameters.truchet_radius.max, parameters.truchet_radius.value));
+            }
+            
+            if (baseParameterValues.zoom_level !== undefined) {
+                const baseZoom = baseParameterValues.zoom_level;
+                parameters.zoom_level.value = baseZoom + (bassInfluence * 0.5);
+                parameters.zoom_level.value = Math.max(parameters.zoom_level.min, 
+                    Math.min(parameters.zoom_level.max, parameters.zoom_level.value));
+            }
+            
+            // Mid frequencies affect rotation speed
+            if (baseParameterValues.rotation_speed !== undefined) {
+                const baseRotation = baseParameterValues.rotation_speed;
+                parameters.rotation_speed.value = baseRotation + (midInfluence * 0.1);
+                parameters.rotation_speed.value = Math.max(parameters.rotation_speed.min, 
+                    Math.min(parameters.rotation_speed.max, parameters.rotation_speed.value));
+            }
+            
+            // Treble affects kaleidoscope segments and color intensity
+            if (baseParameterValues.kaleidoscope_segments !== undefined) {
+                const baseSegments = baseParameterValues.kaleidoscope_segments;
+                let newSegments = baseSegments + (trebleInfluence * 20.0);
+                newSegments = Math.round(newSegments / 2) * 2; // Keep even
+                parameters.kaleidoscope_segments.value = Math.max(parameters.kaleidoscope_segments.min, 
+                    Math.min(parameters.kaleidoscope_segments.max, newSegments));
+            }
+            
+            if (baseParameterValues.color_intensity !== undefined) {
+                const baseIntensity = baseParameterValues.color_intensity;
+                parameters.color_intensity.value = baseIntensity + (trebleInfluence * 0.8);
+                parameters.color_intensity.value = Math.max(parameters.color_intensity.min, 
+                    Math.min(parameters.color_intensity.max, parameters.color_intensity.value));
+            }
+            
+            // Overall volume affects fly speed
+            if (baseParameterValues.fly_speed !== undefined) {
+                const baseSpeed = baseParameterValues.fly_speed;
+                parameters.fly_speed.value = baseSpeed + (audioLevels.overall * 1.0);
+                parameters.fly_speed.value = Math.max(parameters.fly_speed.min, 
+                    Math.min(parameters.fly_speed.max, parameters.fly_speed.value));
+            }
+        }
+
         function render() {
             try {
                 const deltaTime = 1.0 / 60.0;
+
+                // Apply audio reactivity before updating time accumulation
+                if (audioReactive && audioPlaying) {
+                    applyAudioReactivity();
+                }
 
                 if (!animationPaused) {
                     timeAccumulation.camera_position += parameters.fly_speed.value * deltaTime;

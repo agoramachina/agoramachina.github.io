@@ -10,7 +10,7 @@
         #canvas { display: block; }
         .ui { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.8); padding: 15px; border-radius: 8px; font-size: 14px; max-width: 400px; transition: opacity 0.3s ease; }
         .controls { position: absolute; top: 20px; right: 20px; background: rgba(0,0,0,0.8); padding: 15px; border-radius: 8px; font-size: 12px; transition: opacity 0.3s ease; }
-        .menu { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.95); padding: 20px; border-radius: 12px; border: 2px solid #444; max-width: 95vw; max-height: 90vh; overflow-y: auto; z-index: 1000; }
+        .menu { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.95); padding: 30px; border-radius: 12px; border: 2px solid #444; max-width: 600px; z-index: 1000; }
         .menu h2 { color: #4CAF50; margin-bottom: 20px; text-align: center; }
         .menu .section { margin-bottom: 15px; }
         .menu .section h3 { color: #FFC107; margin-bottom: 8px; }
@@ -30,8 +30,8 @@
     
     <div class="controls" id="controls">
         <strong>CONTROLS</strong><br>
-        ↑/↓ Switch parameter<br>
-        ←/→ Adjust parameter<br>
+        ↑/↓ Adjust parameter<br>
+        ←/→ Switch parameter<br>
         C Randomize colors<br>
         Shift+C Reset to B&W<br>
         R Reset current<br>
@@ -41,51 +41,54 @@
         Space Pause<br>
         S Save parameters<br>
         L Load parameters<br>
-        A Upload audio file<br>
-        M Toggle microphone<br>
-        Ctrl+Z Undo<br>
-        Ctrl+Y Redo<br>
-        ESC Toggle all parameters<br>
+        ESC Toggle menu<br>
     </div>
 
-    <!-- All Parameters Display -->
+    <!-- Full Menu -->
     <div class="menu hidden" id="menu">
-        <div style="display: flex; gap: 20px; width: 100%;">
-            <div style="flex: 1; min-width: 300px;">
-                <h2 style="color: #4CAF50; margin-bottom: 15px; font-size: 18px;">📊 All Parameters</h2>
-                <div id="allParametersList" style="font-family: monospace; font-size: 12px; line-height: 1.3;"></div>
-            </div>
-            
-            <div style="flex: 1; min-width: 300px;">
-                <h2 style="color: #FFC107; margin-bottom: 15px; font-size: 18px;">🎨 Color & Audio</h2>
-                
-                <div style="margin-bottom: 15px;">
-                    <h3 style="color: #FFC107; margin-bottom: 8px; font-size: 14px;">Color Palettes</h3>
-                    <div id="allPalettesList" style="font-family: monospace; font-size: 12px; line-height: 1.3;"></div>
-                </div>
-                
-                <div style="margin-bottom: 15px;">
-                    <h3 style="color: #FFC107; margin-bottom: 8px; font-size: 14px;">Audio Status</h3>
-                    <div id="allAudioStatus" style="font-family: monospace; font-size: 12px; line-height: 1.3;"></div>
-                </div>
-                
-                <div>
-                    <h3 style="color: #FFC107; margin-bottom: 8px; font-size: 14px;">Quick Controls</h3>
-                    <div style="font-size: 11px; line-height: 1.2;">
-                        <strong>Navigation:</strong> ↑/↓ switch • ←/→ adjust<br>
-                        <strong>Randomize:</strong> C colors • . parameters<br>
-                        <strong>Reset:</strong> R current • Shift+R all<br>
-                        <strong>Audio:</strong> A upload • M microphone<br>
-                        <strong>Files:</strong> S save • L load<br>
-                        <strong>Undo:</strong> Ctrl+Z/Y • Space pause<br>
-                        <strong>Colors:</strong> I invert • Shift+C reset<br>
-                    </div>
-                </div>
-            </div>
+        <h2>🌀 Kaldao Fractal Visualizer</h2>
+        
+        <div class="section">
+            <h3>📊 Current Parameters</h3>
+            <div id="menuParamsList">Loading...</div>
         </div>
         
-        <div style="text-align: center; margin-top: 15px; opacity: 0.7; font-size: 12px;">
-            Press ESC to close • Current parameter highlighted in green
+        <div class="section">
+            <h3>🎮 Controls</h3>
+            <strong>Navigation:</strong><br>
+            ↑/↓ - Adjust current parameter<br>
+            ←/→ - Switch between parameters<br><br>
+            
+            <strong>Randomization:</strong><br>
+            C - Randomize colors<br>
+            Shift+C - Reset to black & white<br>
+            . - Randomize all parameters<br><br>
+            
+            <strong>Reset:</strong><br>
+            R - Reset current parameter<br>
+            Shift+R - Reset all parameters<br><br>
+            
+            <strong>Colors:</strong><br>
+            I - Invert colors<br><br>
+            
+            <strong>Animation:</strong><br>
+            Space - Pause/unpause animation<br><br>
+            
+            <strong>Save/Load:</strong><br>
+            S - Save parameters to file<br>
+            L - Load parameters from file<br><br>
+            
+            <strong>Menu:</strong><br>
+            ESC - Toggle this menu<br>
+        </div>
+        
+        <div class="section">
+            <h3>🎨 Available Color Palettes</h3>
+            <div id="menuPalettesList">Loading...</div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px; opacity: 0.7;">
+            Press ESC to close menu
         </div>
     </div>
 
@@ -98,26 +101,6 @@
         let useColorPalette = false;
         let invertColors = false;
         let menuVisible = false;
-        
-        // Audio system
-        let audioContext = null;
-        let audioSource = null;
-        let analyser = null;
-        let audioData = null;
-        let audioElement = null;
-        let audioReactive = false;
-        let audioPlaying = false;
-        let baseParameterValues = {};
-        
-        // Microphone system
-        let microphoneStream = null;
-        let microphoneSource = null;
-        let microphoneActive = false;
-
-        // Undo/Redo system
-        let undoStack = [];
-        let redoStack = [];
-        const maxUndoSteps = 50;
 
         // Parameters - exact match to Godot
         const parameters = {
@@ -610,19 +593,19 @@
                     switch(e.code) {
                         case 'ArrowUp':
                             e.preventDefault();
-                            switchParameter(-1);
+                            adjustParameter(1);
                             break;
                         case 'ArrowDown':
                             e.preventDefault();
-                            switchParameter(1);
+                            adjustParameter(-1);
                             break;
                         case 'ArrowLeft':
                             e.preventDefault();
-                            adjustParameter(-1);
+                            switchParameter(-1);
                             break;
                         case 'ArrowRight':
                             e.preventDefault();
-                            adjustParameter(1);
+                            switchParameter(1);
                             break;
                         case 'Space':
                             e.preventDefault();
@@ -667,26 +650,6 @@
                             e.preventDefault();
                             toggleMenu();
                             break;
-                        case 'KeyA':
-                            e.preventDefault();
-                            toggleAudio();
-                            break;
-                        case 'KeyZ':
-                            e.preventDefault();
-                            if (e.ctrlKey || e.metaKey) {
-                                undo();
-                            }
-                            break;
-                        case 'KeyY':
-                            e.preventDefault();
-                            if (e.ctrlKey || e.metaKey) {
-                                redo();
-                            }
-                            break;
-                        case 'KeyM':
-                            e.preventDefault();
-                            toggleMicrophone();
-                            break;
                     }
                 } catch (error) {
                     updateStatus(`Input error: ${error.message}`, 'error');
@@ -725,9 +688,6 @@
         }
 
         function adjustParameter(delta) {
-            // Save current state before making changes
-            saveStateForUndo();
-            
             const paramKey = parameterKeys[currentParameterIndex];
             const param = parameters[paramKey];
             
@@ -746,9 +706,6 @@
         }
 
         function randomizeColors() {
-            // Save current state before making changes
-            saveStateForUndo();
-            
             const palette = colorPalettes[currentPaletteIndex];
             for (let i = 0; i < 3; i++) {
                 palette.a[i] = Math.random();
@@ -766,9 +723,6 @@
         }
 
         function resetToBlackWhite() {
-            // Save current state before making changes
-            saveStateForUndo();
-            
             currentPaletteIndex = 0;
             useColorPalette = false;
             invertColors = false;
@@ -776,58 +730,24 @@
         }
 
         function toggleInvertColors() {
-            // Save current state before making changes
-            saveStateForUndo();
-            
             invertColors = !invertColors;
             updateDisplay();
         }
 
         function randomizeParameters() {
-            // Save current state before making changes
-            saveStateForUndo();
-            
             const excludeParams = ['color_intensity', 'color_speed'];
-            
-            // Define reasonable randomization ranges (subset of full parameter ranges)
-            const randomRanges = {
-                fly_speed: { min: -1.0, max: 2.0 },
-                contrast: { min: 0.5, max: 3.0 },
-                kaleidoscope_segments: { min: 6.0, max: 32.0 },
-                truchet_radius: { min: 0.1, max: 0.8 },
-                center_fill_radius: { min: -0.5, max: 0.5 },
-                layer_count: { min: 4, max: 8 },
-                rotation_speed: { min: -2.0, max: 2.0 },
-                zoom_level: { min: 0.1, max: 2.0 },
-                plane_rotation_speed: { min: -2.0, max: 2.0 },
-                camera_tilt_x: { min: -3.0, max: 3.0 },
-                camera_tilt_y: { min: -3.0, max: 3.0 },
-                camera_roll: { min: -1.0, max: 1.0 },
-                path_stability: { min: -0.5, max: 1.0 },
-                path_scale: { min: 0.5, max: 2.0 }
-            };
             
             Object.keys(parameters).forEach(key => {
                 if (excludeParams.includes(key)) return;
                 
                 const param = parameters[key];
-                const range = randomRanges[key];
-                
-                if (range) {
-                    // Use reasonable range for randomization
-                    param.value = Math.random() * (range.max - range.min) + range.min;
-                } else {
-                    // Fallback to full range if not specified
-                    param.value = Math.random() * (param.max - param.min) + param.min;
-                }
-                
+                param.value = Math.random() * (param.max - param.min) + param.min;
                 param.value = Math.round(param.value / param.step) * param.step;
                 
                 if (key === 'kaleidoscope_segments') {
                     param.value = Math.round(param.value / 2) * 2;
                 }
                 
-                // Clamp to actual parameter bounds
                 param.value = Math.max(param.min, Math.min(param.max, param.value));
             });
             
@@ -835,9 +755,6 @@
         }
 
         function resetCurrentParameter() {
-            // Save current state before making changes
-            saveStateForUndo();
-            
             const paramKey = parameterKeys[currentParameterIndex];
             const param = parameters[paramKey];
             
@@ -857,9 +774,6 @@
         }
 
         function resetAllParameters() {
-            // Save current state before making changes
-            saveStateForUndo();
-            
             Object.keys(parameters).forEach(key => {
                 const defaults = {
                     fly_speed: 0.25, contrast: 1.0, kaleidoscope_segments: 10.0,
@@ -877,116 +791,6 @@
             currentPaletteIndex = 0;
             useColorPalette = false;
             invertColors = false;
-            
-            updateDisplay();
-            updateMenuDisplay();
-        }
-
-        // Undo/Redo System Functions
-        function saveStateForUndo() {
-            // Create a snapshot of the current state
-            const state = {
-                parameters: {},
-                currentPaletteIndex: currentPaletteIndex,
-                useColorPalette: useColorPalette,
-                invertColors: invertColors,
-                palettes: JSON.parse(JSON.stringify(colorPalettes)) // Deep copy
-            };
-            
-            // Copy parameter values
-            Object.keys(parameters).forEach(key => {
-                state.parameters[key] = parameters[key].value;
-            });
-            
-            // Add to undo stack
-            undoStack.push(state);
-            
-            // Limit stack size
-            if (undoStack.length > maxUndoSteps) {
-                undoStack.shift();
-            }
-            
-            // Clear redo stack when new action is performed
-            redoStack = [];
-        }
-
-        function undo() {
-            if (undoStack.length === 0) {
-                updateStatus('Nothing to undo', 'info');
-                return;
-            }
-            
-            // Save current state to redo stack
-            const currentState = {
-                parameters: {},
-                currentPaletteIndex: currentPaletteIndex,
-                useColorPalette: useColorPalette,
-                invertColors: invertColors,
-                palettes: JSON.parse(JSON.stringify(colorPalettes))
-            };
-            
-            Object.keys(parameters).forEach(key => {
-                currentState.parameters[key] = parameters[key].value;
-            });
-            
-            redoStack.push(currentState);
-            
-            // Restore previous state
-            const previousState = undoStack.pop();
-            restoreState(previousState);
-            
-            updateStatus(`⟲ Undone (${undoStack.length} steps remaining)`, 'success');
-        }
-
-        function redo() {
-            if (redoStack.length === 0) {
-                updateStatus('Nothing to redo', 'info');
-                return;
-            }
-            
-            // Save current state to undo stack
-            const currentState = {
-                parameters: {},
-                currentPaletteIndex: currentPaletteIndex,
-                useColorPalette: useColorPalette,
-                invertColors: invertColors,
-                palettes: JSON.parse(JSON.stringify(colorPalettes))
-            };
-            
-            Object.keys(parameters).forEach(key => {
-                currentState.parameters[key] = parameters[key].value;
-            });
-            
-            undoStack.push(currentState);
-            
-            // Restore next state
-            const nextState = redoStack.pop();
-            restoreState(nextState);
-            
-            updateStatus(`⟳ Redone (${redoStack.length} steps available)`, 'success');
-        }
-
-        function restoreState(state) {
-            // Restore parameters
-            Object.keys(state.parameters).forEach(key => {
-                if (parameters[key]) {
-                    parameters[key].value = state.parameters[key];
-                }
-            });
-            
-            // Restore color palette state
-            currentPaletteIndex = state.currentPaletteIndex;
-            useColorPalette = state.useColorPalette;
-            invertColors = state.invertColors;
-            
-            // Restore palette data
-            if (state.palettes) {
-                state.palettes.forEach((palette, index) => {
-                    if (colorPalettes[index]) {
-                        colorPalettes[index] = { ...palette };
-                    }
-                });
-            }
             
             updateDisplay();
             updateMenuDisplay();
@@ -1013,92 +817,30 @@
         function updateMenuDisplay() {
             if (!menuVisible) return;
             
-            // Update ALL parameters list with organized categories
-            const allParamsList = document.getElementById('allParametersList');
-            if (allParamsList) {
+            // Update parameters list
+            const paramsList = document.getElementById('menuParamsList');
+            if (paramsList) {
                 let paramsHTML = '';
-                
-                // Movement & Animation
-                paramsHTML += '<div style="color: #4CAF50; font-weight: bold; margin-bottom: 5px;">MOVEMENT & ANIMATION</div>';
-                const movementParams = ['fly_speed', 'rotation_speed', 'plane_rotation_speed', 'zoom_level'];
-                movementParams.forEach(key => {
+                Object.keys(parameters).forEach((key, index) => {
                     const param = parameters[key];
-                    const index = parameterKeys.indexOf(key);
                     const isCurrent = index === currentParameterIndex;
-                    const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : 'color: #ffffff;';
+                    const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : '';
                     paramsHTML += `<div style="${style}">${param.name}: ${param.value.toFixed(3)}</div>`;
                 });
-                
-                paramsHTML += '<br>';
-                
-                // Pattern & Visual
-                paramsHTML += '<div style="color: #FFC107; font-weight: bold; margin-bottom: 5px;">PATTERN & VISUAL</div>';
-                const patternParams = ['kaleidoscope_segments', 'truchet_radius', 'center_fill_radius', 'layer_count', 'contrast', 'color_intensity'];
-                patternParams.forEach(key => {
-                    const param = parameters[key];
-                    const index = parameterKeys.indexOf(key);
-                    const isCurrent = index === currentParameterIndex;
-                    const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : 'color: #ffffff;';
-                    const value = key === 'kaleidoscope_segments' || key === 'layer_count' ? 
-                        param.value.toFixed(0) : param.value.toFixed(3);
-                    paramsHTML += `<div style="${style}">${param.name}: ${value}</div>`;
-                });
-                
-                paramsHTML += '<br>';
-                
-                // Camera & Path
-                paramsHTML += '<div style="color: #9C27B0; font-weight: bold; margin-bottom: 5px;">CAMERA & PATH</div>';
-                const cameraParams = ['camera_tilt_x', 'camera_tilt_y', 'camera_roll', 'path_stability', 'path_scale'];
-                cameraParams.forEach(key => {
-                    const param = parameters[key];
-                    const index = parameterKeys.indexOf(key);
-                    const isCurrent = index === currentParameterIndex;
-                    const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : 'color: #ffffff;';
-                    paramsHTML += `<div style="${style}">${param.name}: ${param.value.toFixed(3)}</div>`;
-                });
-                
-                paramsHTML += '<br>';
-                
-                // Color & Animation Speed
-                paramsHTML += '<div style="color: #FF5722; font-weight: bold; margin-bottom: 5px;">COLOR & SPEED</div>';
-                const colorParams = ['color_speed'];
-                colorParams.forEach(key => {
-                    const param = parameters[key];
-                    const index = parameterKeys.indexOf(key);
-                    const isCurrent = index === currentParameterIndex;
-                    const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : 'color: #ffffff;';
-                    paramsHTML += `<div style="${style}">${param.name}: ${param.value.toFixed(3)}</div>`;
-                });
-                
-                allParamsList.innerHTML = paramsHTML;
+                paramsList.innerHTML = paramsHTML;
             }
             
             // Update palettes list
-            const allPalettesList = document.getElementById('allPalettesList');
-            if (allPalettesList) {
+            const palettesList = document.getElementById('menuPalettesList');
+            if (palettesList) {
                 let palettesHTML = '';
                 colorPalettes.forEach((palette, index) => {
                     const isCurrent = index === currentPaletteIndex;
-                    const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : 'color: #ffffff;';
+                    const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : '';
                     const inverted = isCurrent && invertColors ? ' (Inverted)' : '';
-                    const active = isCurrent && useColorPalette ? ' ●' : (isCurrent ? ' ○' : '');
-                    palettesHTML += `<div style="${style}">${palette.name}${inverted}${active}</div>`;
+                    palettesHTML += `<div style="${style}">${palette.name}${inverted}</div>`;
                 });
-                allPalettesList.innerHTML = palettesHTML;
-            }
-            
-            // Update audio status
-            const allAudioStatus = document.getElementById('allAudioStatus');
-            if (allAudioStatus) {
-                if (microphoneActive) {
-                    allAudioStatus.innerHTML = '🎤 <span style="color: #4CAF50;">Microphone Active</span><br>🔊 Audio Reactive: ON<br><em>Press M to stop</em>';
-                } else if (!audioElement) {
-                    allAudioStatus.innerHTML = '🎵 No audio file loaded<br>🎤 Microphone: OFF<br>🔊 Audio Reactive: OFF<br><em>Press A for file, M for mic</em>';
-                } else {
-                    const playStatus = audioPlaying ? '<span style="color: #4CAF50;">Playing</span>' : '<span style="color: #FF9800;">Paused</span>';
-                    const reactiveStatus = audioReactive ? '<span style="color: #4CAF50;">ON</span>' : '<span style="color: #FF9800;">OFF</span>';
-                    allAudioStatus.innerHTML = `🎵 File: ${playStatus}<br>🎤 Microphone: OFF<br>🔊 Audio Reactive: ${reactiveStatus}<br><em>Press A to toggle, M for mic</em>`;
-                }
+                palettesList.innerHTML = palettesHTML;
             }
         }
 
@@ -1215,353 +957,9 @@
             }
         }
 
-        async function toggleAudio() {
-            if (!audioContext) {
-                await initAudioContext();
-            }
-            
-            if (!audioElement) {
-                // Prompt user to upload audio file
-                uploadAudioFile();
-            } else {
-                // Toggle audio playback and reactivity
-                if (audioPlaying) {
-                    audioElement.pause();
-                    audioPlaying = false;
-                    audioReactive = false;
-                    restoreBaseParameters();
-                    updateStatus('🎵 Audio paused', 'info');
-                } else {
-                    try {
-                        // Resume audio context if needed
-                        if (audioContext.state === 'suspended') {
-                            await audioContext.resume();
-                        }
-                        
-                        await audioElement.play();
-                        audioPlaying = true;
-                        audioReactive = true;
-                        storeBaseParameters();
-                        updateStatus('🎵 Audio playing with reactivity!', 'success');
-                    } catch (error) {
-                        updateStatus(`❌ Audio playback failed: ${error.message}`, 'error');
-                    }
-                }
-                updateMenuDisplay();
-            }
-        }
-
-        async function initAudioContext() {
-            try {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                
-                // Resume context if suspended (required by some browsers)
-                if (audioContext.state === 'suspended') {
-                    await audioContext.resume();
-                }
-                
-                analyser = audioContext.createAnalyser();
-                analyser.fftSize = 2048;
-                analyser.smoothingTimeConstant = 0.8;
-                audioData = new Uint8Array(analyser.frequencyBinCount);
-                
-                updateStatus('🎵 Audio system initialized', 'success');
-            } catch (error) {
-                updateStatus(`❌ Audio init failed: ${error.message}`, 'error');
-            }
-        }
-
-        function uploadAudioFile() {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = 'audio/*,.wav,.mp3,.ogg,.m4a,.aac';
-            
-            input.onchange = async function(event) {
-                const file = event.target.files[0];
-                if (!file) return;
-                
-                updateStatus(`🎵 Loading audio: ${file.name}...`, 'info');
-                
-                try {
-                    // Clean up previous audio
-                    if (audioElement) {
-                        audioElement.pause();
-                        audioElement.src = '';
-                        audioElement = null;
-                    }
-                    
-                    if (audioSource) {
-                        audioSource.disconnect();
-                        audioSource = null;
-                    }
-                    
-                    // Create new audio element
-                    audioElement = new Audio();
-                    audioElement.preload = 'auto';
-                    audioElement.loop = true;
-                    
-                    // Create object URL
-                    const audioURL = URL.createObjectURL(file);
-                    audioElement.src = audioURL;
-                    
-                    // Wait for audio to load
-                    await new Promise((resolve, reject) => {
-                        audioElement.oncanplaythrough = resolve;
-                        audioElement.onerror = () => reject(new Error('Failed to decode audio file'));
-                        audioElement.onabort = () => reject(new Error('Audio loading aborted'));
-                        
-                        // Timeout after 10 seconds
-                        setTimeout(() => reject(new Error('Audio loading timeout')), 10000);
-                    });
-                    
-                    // Resume audio context if needed
-                    if (audioContext.state === 'suspended') {
-                        await audioContext.resume();
-                    }
-                    
-                    // Connect audio to analyser
-                    audioSource = audioContext.createMediaElementSource(audioElement);
-                    audioSource.connect(analyser);
-                    audioSource.connect(audioContext.destination);
-                    
-                    updateStatus(`🎵 Audio loaded: ${file.name}`, 'success');
-                    updateMenuDisplay();
-                    
-                    // Auto-start playback with reactivity
-                    try {
-                        await audioElement.play();
-                        audioPlaying = true;
-                        audioReactive = true;
-                        storeBaseParameters();
-                        updateStatus(`🎵 Playing: ${file.name} (Reactive mode)`, 'success');
-                    } catch (playError) {
-                        updateStatus(`⚠️ Audio loaded but autoplay blocked. Press A to play.`, 'info');
-                    }
-                    
-                } catch (error) {
-                    console.error('Audio loading error:', error);
-                    updateStatus(`❌ Failed to load audio: ${error.message}`, 'error');
-                    
-                    // Clean up on error
-                    if (audioElement) {
-                        audioElement.src = '';
-                        audioElement = null;
-                    }
-                    if (audioSource) {
-                        audioSource.disconnect();
-                        audioSource = null;
-                    }
-                }
-            };
-            
-            input.click();
-        }
-
-        function storeBaseParameters() {
-            // Store current parameter values as base values for audio reactivity
-            baseParameterValues = {};
-            Object.keys(parameters).forEach(key => {
-                baseParameterValues[key] = parameters[key].value;
-            });
-        }
-
-        function restoreBaseParameters() {
-            // Restore parameters to their base values
-            Object.keys(baseParameterValues).forEach(key => {
-                if (parameters[key]) {
-                    parameters[key].value = baseParameterValues[key];
-                }
-            });
-            updateDisplay();
-        }
-
-        function analyzeAudio() {
-            if (!analyser || !audioData || !audioReactive || (!audioPlaying && !microphoneActive)) {
-                return { bass: 0, mid: 0, treble: 0, overall: 0 };
-            }
-            
-            analyser.getByteFrequencyData(audioData);
-            
-            // Frequency ranges (approximate for 44.1kHz sample rate)
-            const bassRange = { start: 0, end: 32 };      // ~20-250Hz
-            const midRange = { start: 32, end: 128 };     // ~250-2000Hz  
-            const trebleRange = { start: 128, end: 256 }; // ~2000-8000Hz
-            
-            function getAverageVolume(range) {
-                let sum = 0;
-                for (let i = range.start; i < range.end && i < audioData.length; i++) {
-                    sum += audioData[i];
-                }
-                return sum / (range.end - range.start) / 255.0;
-            }
-            
-            const bass = getAverageVolume(bassRange);
-            const mid = getAverageVolume(midRange);
-            const treble = getAverageVolume(trebleRange);
-            const overall = (bass + mid + treble) / 3.0;
-            
-            return { bass, mid, treble, overall };
-        }
-
-        function applyAudioReactivity() {
-            if (!audioReactive || (!audioPlaying && !microphoneActive)) return;
-            
-            const audioLevels = analyzeAudio();
-            
-            // Apply audio modulation to parameters (relative to base values)
-            const bassInfluence = audioLevels.bass * 2.0;
-            const midInfluence = audioLevels.mid * 1.5;
-            const trebleInfluence = audioLevels.treble * 1.0;
-            
-            // Bass affects truchet radius and zoom
-            if (baseParameterValues.truchet_radius !== undefined) {
-                const baseRadius = baseParameterValues.truchet_radius;
-                parameters.truchet_radius.value = baseRadius + (bassInfluence * 0.3);
-                parameters.truchet_radius.value = Math.max(parameters.truchet_radius.min, 
-                    Math.min(parameters.truchet_radius.max, parameters.truchet_radius.value));
-            }
-            
-            if (baseParameterValues.zoom_level !== undefined) {
-                const baseZoom = baseParameterValues.zoom_level;
-                parameters.zoom_level.value = baseZoom + (bassInfluence * 0.5);
-                parameters.zoom_level.value = Math.max(parameters.zoom_level.min, 
-                    Math.min(parameters.zoom_level.max, parameters.zoom_level.value));
-            }
-            
-            // Mid frequencies affect rotation speed
-            if (baseParameterValues.rotation_speed !== undefined) {
-                const baseRotation = baseParameterValues.rotation_speed;
-                parameters.rotation_speed.value = baseRotation + (midInfluence * 0.1);
-                parameters.rotation_speed.value = Math.max(parameters.rotation_speed.min, 
-                    Math.min(parameters.rotation_speed.max, parameters.rotation_speed.value));
-            }
-            
-            // Treble affects kaleidoscope segments and color intensity
-            if (baseParameterValues.kaleidoscope_segments !== undefined) {
-                const baseSegments = baseParameterValues.kaleidoscope_segments;
-                let newSegments = baseSegments + (trebleInfluence * 20.0);
-                newSegments = Math.round(newSegments / 2) * 2; // Keep even
-                parameters.kaleidoscope_segments.value = Math.max(parameters.kaleidoscope_segments.min, 
-                    Math.min(parameters.kaleidoscope_segments.max, newSegments));
-            }
-            
-            if (baseParameterValues.color_intensity !== undefined) {
-                const baseIntensity = baseParameterValues.color_intensity;
-                parameters.color_intensity.value = baseIntensity + (trebleInfluence * 0.8);
-                parameters.color_intensity.value = Math.max(parameters.color_intensity.min, 
-                    Math.min(parameters.color_intensity.max, parameters.color_intensity.value));
-            }
-            
-            // Overall volume affects fly speed
-            if (baseParameterValues.fly_speed !== undefined) {
-                const baseSpeed = baseParameterValues.fly_speed;
-                parameters.fly_speed.value = baseSpeed + (audioLevels.overall * 1.0);
-                parameters.fly_speed.value = Math.max(parameters.fly_speed.min, 
-                    Math.min(parameters.fly_speed.max, parameters.fly_speed.value));
-            }
-        }
-
-        async function toggleMicrophone() {
-            if (!audioContext) {
-                await initAudioContext();
-            }
-            
-            if (microphoneActive) {
-                // Stop microphone
-                stopMicrophone();
-            } else {
-                // Start microphone
-                await startMicrophone();
-            }
-        }
-
-        async function startMicrophone() {
-            try {
-                updateStatus('🎤 Requesting microphone access...', 'info');
-                
-                // Request microphone access
-                microphoneStream = await navigator.mediaDevices.getUserMedia({ 
-                    audio: {
-                        echoCancellation: false,
-                        noiseSuppression: false,
-                        autoGainControl: false
-                    } 
-                });
-                
-                // Resume audio context if needed
-                if (audioContext.state === 'suspended') {
-                    await audioContext.resume();
-                }
-                
-                // Stop any playing audio file
-                if (audioElement && audioPlaying) {
-                    audioElement.pause();
-                    audioPlaying = false;
-                }
-                
-                // Connect microphone to analyzer
-                microphoneSource = audioContext.createMediaStreamSource(microphoneStream);
-                microphoneSource.connect(analyser);
-                
-                microphoneActive = true;
-                audioReactive = true;
-                storeBaseParameters();
-                
-                updateStatus('🎤 Microphone active with reactivity!', 'success');
-                updateMenuDisplay();
-                
-            } catch (error) {
-                console.error('Microphone access error:', error);
-                let errorMessage = 'Failed to access microphone';
-                
-                if (error.name === 'NotAllowedError') {
-                    errorMessage = 'Microphone access denied. Please allow microphone access and try again.';
-                } else if (error.name === 'NotFoundError') {
-                    errorMessage = 'No microphone found. Please connect a microphone and try again.';
-                } else if (error.name === 'NotReadableError') {
-                    errorMessage = 'Microphone is busy or not available.';
-                }
-                
-                updateStatus(`❌ ${errorMessage}`, 'error');
-                microphoneActive = false;
-            }
-        }
-
-        function stopMicrophone() {
-            try {
-                // Stop microphone stream
-                if (microphoneStream) {
-                    microphoneStream.getTracks().forEach(track => track.stop());
-                    microphoneStream = null;
-                }
-                
-                // Disconnect microphone source
-                if (microphoneSource) {
-                    microphoneSource.disconnect();
-                    microphoneSource = null;
-                }
-                
-                microphoneActive = false;
-                audioReactive = false;
-                restoreBaseParameters();
-                
-                updateStatus('🎤 Microphone stopped', 'info');
-                updateMenuDisplay();
-                
-            } catch (error) {
-                console.error('Error stopping microphone:', error);
-                updateStatus('❌ Error stopping microphone', 'error');
-            }
-        }
-
         function render() {
             try {
                 const deltaTime = 1.0 / 60.0;
-
-                // Apply audio reactivity before updating time accumulation
-                if (audioReactive && audioPlaying) {
-                    applyAudioReactivity();
-                }
 
                 if (!animationPaused) {
                     timeAccumulation.camera_position += parameters.fly_speed.value * deltaTime;
