@@ -798,17 +798,45 @@
             
             const excludeParams = ['color_intensity', 'color_speed'];
             
+            // Define reasonable randomization ranges (subset of full parameter ranges)
+            const randomRanges = {
+                fly_speed: { min: -1.0, max: 2.0 },
+                contrast: { min: 0.5, max: 3.0 },
+                kaleidoscope_segments: { min: 6.0, max: 32.0 },
+                truchet_radius: { min: 0.1, max: 0.8 },
+                center_fill_radius: { min: -0.5, max: 0.5 },
+                layer_count: { min: 4, max: 8 },
+                rotation_speed: { min: -2.0, max: 2.0 },
+                zoom_level: { min: 0.1, max: 2.0 },
+                plane_rotation_speed: { min: -2.0, max: 2.0 },
+                camera_tilt_x: { min: -3.0, max: 3.0 },
+                camera_tilt_y: { min: -3.0, max: 3.0 },
+                camera_roll: { min: -1.0, max: 1.0 },
+                path_stability: { min: -0.5, max: 1.0 },
+                path_scale: { min: 0.5, max: 2.0 }
+            };
+            
             Object.keys(parameters).forEach(key => {
                 if (excludeParams.includes(key)) return;
                 
                 const param = parameters[key];
-                param.value = Math.random() * (param.max - param.min) + param.min;
+                const range = randomRanges[key];
+                
+                if (range) {
+                    // Use reasonable range for randomization
+                    param.value = Math.random() * (range.max - range.min) + range.min;
+                } else {
+                    // Fallback to full range if not specified
+                    param.value = Math.random() * (param.max - param.min) + param.min;
+                }
+                
                 param.value = Math.round(param.value / param.step) * param.step;
                 
                 if (key === 'kaleidoscope_segments') {
                     param.value = Math.round(param.value / 2) * 2;
                 }
                 
+                // Clamp to actual parameter bounds
                 param.value = Math.max(param.min, Math.min(param.max, param.value));
             });
             
