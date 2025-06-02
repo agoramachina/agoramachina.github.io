@@ -158,7 +158,17 @@
             { name: "Sunset", a: [0.7, 0.3, 0.2], b: [0.3, 0.2, 0.1], c: [1.5, 1.0, 0.8], d: [0.0, 0.1, 0.3] }
         ];
 
-        const parameterKeys = Object.keys(parameters);
+        // Parameter keys in the order they appear in the menu display
+        const parameterKeys = [
+            // MOVEMENT & ANIMATION
+            'fly_speed', 'rotation_speed', 'plane_rotation_speed', 'zoom_level',
+            // PATTERN & VISUAL  
+            'kaleidoscope_segments', 'truchet_radius', 'center_fill_radius', 'layer_count', 'contrast', 'color_intensity',
+            // CAMERA & PATH
+            'camera_tilt_x', 'camera_tilt_y', 'camera_roll', 'path_stability', 'path_scale',
+            // COLOR & SPEED
+            'color_speed'
+        ];
 
         // Shaders
         const vertexShaderSource = `
