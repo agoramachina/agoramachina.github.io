@@ -323,33 +323,19 @@
                 vec2 hp = p;
                 vec2 hpp = toPolar(hp);
                 
-                // Get two nearest even segment counts
-                float lowerRep = floor(rep * 0.5) * 2.0;
-                float upperRep = lowerRep + 2.0;
-                lowerRep = max(lowerRep, 4.0);
-                upperRep = max(upperRep, 6.0);
+                // Ensure rep is always even for proper mirroring
+                float evenRep = floor(rep * 0.5) * 2.0;
+                evenRep = max(evenRep, 4.0); // Minimum of 4 segments
                 
-                // Calculate interpolation factor
-                float t = fract(rep * 0.5);
+                float rn = modMirror1(hpp.y, 2.0 * PI / evenRep);
                 
-                // Apply kaleidoscope effect with lower segment count
-                vec2 p1 = hpp;
-                float rn1 = modMirror1(p1.y, 2.0 * PI / lowerRep);
-                float sa1 = PI / lowerRep - pabs(PI / lowerRep - abs(p1.y), sm);
-                p1.y = sign(p1.y) * sa1;
+                float sa = PI / evenRep - pabs(PI / evenRep - abs(hpp.y), sm);
+                hpp.y = sign(hpp.y) * sa;
                 
-                // Apply kaleidoscope effect with upper segment count
-                vec2 p2 = hpp;
-                float rn2 = modMirror1(p2.y, 2.0 * PI / upperRep);
-                float sa2 = PI / upperRep - pabs(PI / upperRep - abs(p2.y), sm);
-                p2.y = sign(p2.y) * sa2;
-                
-                // Interpolate between the two results
-                vec2 blendedPolar = mix(p1, p2, t);
-                hp = toRect(blendedPolar);
+                hp = toRect(hpp);
                 p = hp;
                 
-                return mix(rn1, rn2, t);
+                return rn;
             }
             
             vec3 cell_df(float r, vec2 np, vec2 mp, vec2 off) {
