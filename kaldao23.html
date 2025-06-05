@@ -323,9 +323,13 @@
                 vec2 hp = p;
                 vec2 hpp = toPolar(hp);
                 
-                float rn = modMirror1(hpp.y, 2.0 * PI / rep);
+                // Ensure rep is always even for proper mirroring
+                float evenRep = floor(rep * 0.5) * 2.0;
+                evenRep = max(evenRep, 4.0); // Minimum of 4 segments
                 
-                float sa = PI / rep - pabs(PI / rep - abs(hpp.y), sm);
+                float rn = modMirror1(hpp.y, 2.0 * PI / evenRep);
+                
+                float sa = PI / evenRep - pabs(PI / evenRep - abs(hpp.y), sm);
                 hpp.y = sign(hpp.y) * sa;
                 
                 hp = toRect(hpp);
@@ -1637,7 +1641,7 @@
                 // Apply audio modifiers to parameters
                 gl.uniform1f(uniforms.u_fly_speed, parameters.fly_speed.value * audioModifiers.fly_speed);
                 gl.uniform1f(uniforms.u_contrast, parameters.contrast.value * audioModifiers.contrast);
-                gl.uniform1f(uniforms.u_kaleidoscope_segments, Math.max(4, parameters.kaleidoscope_segments.value * audioModifiers.kaleidoscope_segments));
+                gl.uniform1f(uniforms.u_kaleidoscope_segments, parameters.kaleidoscope_segments.value * audioModifiers.kaleidoscope_segments);
                 gl.uniform1f(uniforms.u_layer_count, Math.max(1, Math.min(10, parameters.layer_count.value * audioModifiers.layer_count)));
                 gl.uniform1f(uniforms.u_truchet_radius, parameters.truchet_radius.value * audioModifiers.truchet_radius);
                 gl.uniform1f(uniforms.u_center_fill_radius, parameters.center_fill_radius.value * audioModifiers.center_fill_radius);
