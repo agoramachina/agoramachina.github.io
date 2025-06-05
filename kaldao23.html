@@ -323,8 +323,8 @@
                 vec2 hp = p;
                 vec2 hpp = toPolar(hp);
                 
-                // Ensure rep is always even for proper mirroring
-                float evenRep = floor(rep * 0.5) * 2.0;
+                // Manual rounding: floor(x + 0.5) for smoother transitions
+                float evenRep = floor(rep * 0.5 + 0.5) * 2.0;
                 evenRep = max(evenRep, 4.0); // Minimum of 4 segments
                 
                 float rn = modMirror1(hpp.y, 2.0 * PI / evenRep);
