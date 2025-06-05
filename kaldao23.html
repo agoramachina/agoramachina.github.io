@@ -115,7 +115,7 @@
         
         // Shake detection
         let lastAcceleration = { x: 0, y: 0, z: 0 };
-        let shakeThreshold = 15;
+        let shakeThreshold = 25; // Increased from 15 to make it less sensitive
         let shakeTimeout = null;
         
         // Audio system
@@ -844,9 +844,16 @@
                 if (!isDragging && Date.now() - touchStartTime >= 800) {
                     isLongPress = true;
                     // Vibrate if available
-                    if (navigator.vibrate) navigator.vibrate(50);
-                    resetCurrentParameter();
-                    updateStatus('📱 Parameter reset!', 'success');
+                    if (navigator.vibrate) navigator.vibrate(100);
+                    resetAllParameters(); // Changed to reset ALL parameters
+                    updateStatus('📱 All parameters reset!', 'success');
+                    // Auto-hide status after 2 seconds
+                    setTimeout(() => {
+                        if (!menuVisible) {
+                            const ui = document.getElementById('ui');
+                            if (ui) ui.classList.add('hidden');
+                        }
+                    }, 2000);
                 }
             }, 800);
         }
@@ -860,12 +867,12 @@
             const deltaY = touch.clientY - touchStartY;
             const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
             
-            if (distance > 10) {
+            if (distance > 15) { // Increased threshold for less sensitivity
                 isDragging = true;
                 
                 // Vertical swipe: adjust parameter value (like a fader)
                 if (Math.abs(deltaY) > Math.abs(deltaX)) {
-                    const sensitivity = 0.01;
+                    const sensitivity = 0.003; // Reduced from 0.01 to make it less sensitive
                     const delta = -deltaY * sensitivity; // Invert Y (up = increase)
                     adjustParameterSmooth(delta);
                     
@@ -873,14 +880,49 @@
                     touchStartY = touch.clientY;
                 }
                 // Horizontal swipe: change parameter
-                else if (Math.abs(deltaX) > 50) {
-                    const direction = deltaX > 0 ? 1 : -1;
-                    switchParameter(direction);
-                    updateStatus(`📱 Switched to: ${parameters[parameterKeys[currentParameterIndex]].name}`, 'info');
+                else {
+                    const swipeSpeed = Math.abs(deltaX) / (Date.now() - touchStartTime);
                     
-                    // Reset touch start to prevent multiple switches
-                    touchStartX = touch.clientX;
-                    touchStartY = touch.clientY;
+                    // Quick swipe: discrete parameter change
+                    if (swipeSpeed > 0.5 && Math.abs(deltaX) > 60) {
+                        const direction = deltaX > 0 ? 1 : -1;
+                        switchParameter(direction);
+                        updateStatus(`📱 ${parameters[parameterKeys[currentParameterIndex]].name}`, 'info');
+                        
+                        // Auto-hide status after 1.5 seconds
+                        setTimeout(() => {
+                            if (!menuVisible) {
+                                const ui = document.getElementById('ui');
+                                if (ui) ui.classList.add('hidden');
+                            }
+                        }, 1500);
+                        
+                        // Reset touch start to prevent multiple switches
+                        touchStartX = touch.clientX;
+                        touchStartY = touch.clientY;
+                        touchStartTime = Date.now();
+                    }
+                    // Slow drag: continuous cycling through parameters
+                    else if (Math.abs(deltaX) > 40) {
+                        const parameterSpacing = 80; // pixels per parameter
+                        const parameterIndex = Math.floor(Math.abs(deltaX) / parameterSpacing);
+                        const direction = deltaX > 0 ? 1 : -1;
+                        const targetIndex = (currentParameterIndex + (direction * parameterIndex) + parameterKeys.length) % parameterKeys.length;
+                        
+                        if (targetIndex !== currentParameterIndex) {
+                            currentParameterIndex = targetIndex;
+                            updateDisplay();
+                            updateStatus(`📱 ${parameters[parameterKeys[currentParameterIndex]].name}`, 'info');
+                            
+                            // Auto-hide status after 1.5 seconds
+                            setTimeout(() => {
+                                if (!menuVisible) {
+                                    const ui = document.getElementById('ui');
+                                    if (ui) ui.classList.add('hidden');
+                                }
+                            }, 1500);
+                        }
+                    }
                 }
             }
         }
@@ -897,6 +939,14 @@
                     // Double tap - randomize colors
                     randomizeColors();
                     updateStatus('📱 Colors randomized!', 'success');
+                    
+                    // Auto-hide status after 2 seconds
+                    setTimeout(() => {
+                        if (!menuVisible) {
+                            const ui = document.getElementById('ui');
+                            if (ui) ui.classList.add('hidden');
+                        }
+                    }, 2000);
                 } else {
                     // Single tap - toggle menu
                     toggleMenu();
@@ -925,6 +975,14 @@
                     randomizeParameters();
                     updateStatus('📱 Shake detected! Parameters randomized!', 'success');
                     if (navigator.vibrate) navigator.vibrate([50, 100, 50]);
+                    
+                    // Auto-hide status after 3 seconds
+                    setTimeout(() => {
+                        if (!menuVisible) {
+                            const ui = document.getElementById('ui');
+                            if (ui) ui.classList.add('hidden');
+                        }
+                    }, 3000);
                     
                     shakeTimeout = setTimeout(() => {
                         shakeTimeout = null;
@@ -1275,8 +1333,9 @@
                     paramsHTML += '<div style="color: #FFC107; font-size: 12px; margin-bottom: 15px; line-height: 1.4;">';
                     paramsHTML += '• Tap: Toggle menu<br>';
                     paramsHTML += '• Double tap: Random colors<br>';
-                    paramsHTML += '• Hold: Reset parameter<br>';
-                    paramsHTML += '• Swipe ←/→: Change parameter<br>';
+                    paramsHTML += '• Hold: Reset ALL parameters<br>';
+                    paramsHTML += '• Quick swipe ←/→: Change parameter<br>';
+                    paramsHTML += '• Drag ←/→: Scroll through parameters<br>';
                     paramsHTML += '• Swipe ↑/↓: Adjust value<br>';
                     paramsHTML += '• Shake: Random all<br>';
                     paramsHTML += '</div>';
@@ -1341,37 +1400,39 @@
                 allParamsList.innerHTML = paramsHTML;
             }
             
-            // Update palettes list
-            const allPalettesList = document.getElementById('allPalettesList');
-            if (allPalettesList) {
-                let palettesHTML = '';
-                colorPalettes.forEach((palette, index) => {
-                    const isCurrent = index === currentPaletteIndex;
-                    const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : 'color: #ffffff;';
-                    const inverted = isCurrent && invertColors ? ' (Inverted)' : '';
-                    const active = isCurrent && useColorPalette ? ' ●' : (isCurrent ? ' ○' : '');
-                    palettesHTML += `<div style="${style}">${palette.name}${inverted}${active}</div>`;
-                });
-                allPalettesList.innerHTML = palettesHTML;
+            // Only show right column on desktop
+            const rightColumn = document.querySelector('.menu > div > div:nth-child(2)');
+            if (rightColumn) {
+                rightColumn.style.display = isMobile ? 'none' : 'block';
             }
             
-            // Update audio status
-            const allAudioStatus = document.getElementById('allAudioStatus');
-            if (allAudioStatus) {
-                if (microphoneActive) {
-                    allAudioStatus.innerHTML = '🎤 <span style="color: #4CAF50;">Microphone Active</span><br>🔊 Audio Reactive: ON<br><em>Press M to stop</em>';
-                } else if (!audioElement) {
-                    const instructions = isMobile ? 
-                        '🎵 No audio file loaded<br>🎤 Microphone: OFF<br>🔊 Audio Reactive: OFF<br><em>Use desktop for audio</em>' :
-                        '🎵 No audio file loaded<br>🎤 Microphone: OFF<br>🔊 Audio Reactive: OFF<br><em>Press A for file, M for mic</em>';
-                    allAudioStatus.innerHTML = instructions;
-                } else {
-                    const playStatus = audioPlaying ? '<span style="color: #4CAF50;">Playing</span>' : '<span style="color: #FF9800;">Paused</span>';
-                    const reactiveStatus = audioReactive ? '<span style="color: #4CAF50;">ON</span>' : '<span style="color: #FF9800;">OFF</span>';
-                    const instructions = isMobile ? 
-                        `🎵 File: ${playStatus}<br>🎤 Microphone: OFF<br>🔊 Audio Reactive: ${reactiveStatus}<br><em>Use desktop for audio</em>` :
-                        `🎵 File: ${playStatus}<br>🎤 Microphone: OFF<br>🔊 Audio Reactive: ${reactiveStatus}<br><em>Press A to toggle, M for mic</em>`;
-                    allAudioStatus.innerHTML = instructions;
+            if (!isMobile) {
+                // Update palettes list (desktop only)
+                const allPalettesList = document.getElementById('allPalettesList');
+                if (allPalettesList) {
+                    let palettesHTML = '';
+                    colorPalettes.forEach((palette, index) => {
+                        const isCurrent = index === currentPaletteIndex;
+                        const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : 'color: #ffffff;';
+                        const inverted = isCurrent && invertColors ? ' (Inverted)' : '';
+                        const active = isCurrent && useColorPalette ? ' ●' : (isCurrent ? ' ○' : '');
+                        palettesHTML += `<div style="${style}">${palette.name}${inverted}${active}</div>`;
+                    });
+                    allPalettesList.innerHTML = palettesHTML;
+                }
+                
+                // Update audio status (desktop only)
+                const allAudioStatus = document.getElementById('allAudioStatus');
+                if (allAudioStatus) {
+                    if (microphoneActive) {
+                        allAudioStatus.innerHTML = '🎤 <span style="color: #4CAF50;">Microphone Active</span><br>🔊 Audio Reactive: ON<br><em>Press M to stop</em>';
+                    } else if (!audioElement) {
+                        allAudioStatus.innerHTML = '🎵 No audio file loaded<br>🎤 Microphone: OFF<br>🔊 Audio Reactive: OFF<br><em>Press A for file, M for mic</em>';
+                    } else {
+                        const playStatus = audioPlaying ? '<span style="color: #4CAF50;">Playing</span>' : '<span style="color: #FF9800;">Paused</span>';
+                        const reactiveStatus = audioReactive ? '<span style="color: #4CAF50;">ON</span>' : '<span style="color: #FF9800;">OFF</span>';
+                        allAudioStatus.innerHTML = `🎵 File: ${playStatus}<br>🎤 Microphone: OFF<br>🔊 Audio Reactive: ${reactiveStatus}<br><em>Press A to toggle, M for mic</em>`;
+                    }
                 }
             }
         }
