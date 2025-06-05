@@ -104,6 +104,20 @@
         let controlsFadeTimeout = null;
         const CONTROLS_FADE_DELAY = 3000; // 3 seconds
         
+        // Mobile detection and touch handling
+        let isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        let touchStartTime = 0;
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let isLongPress = false;
+        let isDragging = false;
+        let lastTouchTime = 0;
+        
+        // Shake detection
+        let lastAcceleration = { x: 0, y: 0, z: 0 };
+        let shakeThreshold = 15;
+        let shakeTimeout = null;
+        
         // Audio system
         let audioContext = null;
         let audioSource = null;
@@ -323,8 +337,8 @@
                 vec2 hp = p;
                 vec2 hpp = toPolar(hp);
                 
-                // Ensure rep is always even for proper mirroring
-                float evenRep = floor(rep * 0.5) * 2.0;
+                // Manual rounding: floor(x + 0.5) for smoother transitions
+                float evenRep = floor(rep * 0.5 + 0.5) * 2.0;
                 evenRep = max(evenRep, 4.0); // Minimum of 4 segments
                 
                 float rn = modMirror1(hpp.y, 2.0 * PI / evenRep);
@@ -682,7 +696,10 @@
         }
 
         function setupControls() {
+            // Desktop keyboard controls
             document.addEventListener('keydown', (e) => {
+                if (isMobile) return; // Skip keyboard on mobile
+                
                 try {
                     // Reset controls fade timer on any keypress
                     resetControlsFadeTimer();
@@ -773,6 +790,25 @@
                 }
             });
 
+            // Mobile touch controls
+            if (isMobile) {
+                setupMobileControls();
+                
+                // Hide desktop controls on mobile
+                const controls = document.getElementById('controls');
+                if (controls) {
+                    controls.style.display = 'none';
+                }
+                
+                // Make UI more mobile friendly
+                const ui = document.getElementById('ui');
+                if (ui) {
+                    ui.style.fontSize = '16px';
+                    ui.style.padding = '20px';
+                    ui.style.maxWidth = '90vw';
+                }
+            }
+
             window.addEventListener('resize', () => {
                 if (canvas && gl) {
                     canvas.width = window.innerWidth;
@@ -780,6 +816,141 @@
                     gl.viewport(0, 0, canvas.width, canvas.height);
                 }
             });
+        }
+
+        function setupMobileControls() {
+            // Touch event listeners
+            canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+            canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+            canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+            
+            // Device motion for shake detection
+            if (window.DeviceMotionEvent) {
+                window.addEventListener('devicemotion', handleDeviceMotion);
+            }
+        }
+
+        function handleTouchStart(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            touchStartTime = Date.now();
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            isLongPress = false;
+            isDragging = false;
+            
+            // Start long press timer
+            setTimeout(() => {
+                if (!isDragging && Date.now() - touchStartTime >= 800) {
+                    isLongPress = true;
+                    // Vibrate if available
+                    if (navigator.vibrate) navigator.vibrate(50);
+                    resetCurrentParameter();
+                    updateStatus('📱 Parameter reset!', 'success');
+                }
+            }, 800);
+        }
+
+        function handleTouchMove(e) {
+            e.preventDefault();
+            if (isLongPress) return;
+            
+            const touch = e.touches[0];
+            const deltaX = touch.clientX - touchStartX;
+            const deltaY = touch.clientY - touchStartY;
+            const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+            
+            if (distance > 10) {
+                isDragging = true;
+                
+                // Vertical swipe: adjust parameter value (like a fader)
+                if (Math.abs(deltaY) > Math.abs(deltaX)) {
+                    const sensitivity = 0.01;
+                    const delta = -deltaY * sensitivity; // Invert Y (up = increase)
+                    adjustParameterSmooth(delta);
+                    
+                    // Update start position for continuous dragging
+                    touchStartY = touch.clientY;
+                }
+                // Horizontal swipe: change parameter
+                else if (Math.abs(deltaX) > 50) {
+                    const direction = deltaX > 0 ? 1 : -1;
+                    switchParameter(direction);
+                    updateStatus(`📱 Switched to: ${parameters[parameterKeys[currentParameterIndex]].name}`, 'info');
+                    
+                    // Reset touch start to prevent multiple switches
+                    touchStartX = touch.clientX;
+                    touchStartY = touch.clientY;
+                }
+            }
+        }
+
+        function handleTouchEnd(e) {
+            e.preventDefault();
+            const touchDuration = Date.now() - touchStartTime;
+            
+            // Simple tap (not long press, not drag)
+            if (!isLongPress && !isDragging && touchDuration < 300) {
+                // Double tap detection
+                const now = Date.now();
+                if (now - lastTouchTime < 300) {
+                    // Double tap - randomize colors
+                    randomizeColors();
+                    updateStatus('📱 Colors randomized!', 'success');
+                } else {
+                    // Single tap - toggle menu
+                    toggleMenu();
+                }
+                lastTouchTime = now;
+            }
+            
+            // Reset touch state
+            isLongPress = false;
+            isDragging = false;
+        }
+
+        function handleDeviceMotion(e) {
+            const acceleration = e.accelerationIncludingGravity;
+            if (!acceleration) return;
+            
+            const deltaX = Math.abs(acceleration.x - lastAcceleration.x);
+            const deltaY = Math.abs(acceleration.y - lastAcceleration.y);
+            const deltaZ = Math.abs(acceleration.z - lastAcceleration.z);
+            
+            const totalDelta = deltaX + deltaY + deltaZ;
+            
+            if (totalDelta > shakeThreshold) {
+                // Prevent multiple shake detections
+                if (!shakeTimeout) {
+                    randomizeParameters();
+                    updateStatus('📱 Shake detected! Parameters randomized!', 'success');
+                    if (navigator.vibrate) navigator.vibrate([50, 100, 50]);
+                    
+                    shakeTimeout = setTimeout(() => {
+                        shakeTimeout = null;
+                    }, 1000);
+                }
+            }
+            
+            lastAcceleration = { x: acceleration.x, y: acceleration.y, z: acceleration.z };
+        }
+
+        function adjustParameterSmooth(delta) {
+            // Save current state before making changes
+            saveStateForUndo();
+            
+            const paramKey = parameterKeys[currentParameterIndex];
+            const param = parameters[paramKey];
+            
+            // Use smaller steps for smooth mobile control
+            const step = param.step * 0.5;
+            param.value = Math.max(param.min, Math.min(param.max, param.value + delta * (param.max - param.min)));
+            
+            if (paramKey === 'kaleidoscope_segments') {
+                param.value = Math.round(param.value / 2) * 2;
+            }
+            
+            updateDisplay();
         }
 
         function updateStatus(message, type = 'info') {
@@ -1098,6 +1269,19 @@
             if (allParamsList) {
                 let paramsHTML = '';
                 
+                // Add mobile instructions if on mobile
+                if (isMobile) {
+                    paramsHTML += '<div style="color: #4CAF50; font-weight: bold; margin-bottom: 10px; font-size: 14px;">📱 MOBILE CONTROLS</div>';
+                    paramsHTML += '<div style="color: #FFC107; font-size: 12px; margin-bottom: 15px; line-height: 1.4;">';
+                    paramsHTML += '• Tap: Toggle menu<br>';
+                    paramsHTML += '• Double tap: Random colors<br>';
+                    paramsHTML += '• Hold: Reset parameter<br>';
+                    paramsHTML += '• Swipe ←/→: Change parameter<br>';
+                    paramsHTML += '• Swipe ↑/↓: Adjust value<br>';
+                    paramsHTML += '• Shake: Random all<br>';
+                    paramsHTML += '</div>';
+                }
+                
                 // Movement & Animation
                 paramsHTML += '<div style="color: #4CAF50; font-weight: bold; margin-bottom: 5px;">MOVEMENT & ANIMATION</div>';
                 const movementParams = ['fly_speed', 'rotation_speed', 'plane_rotation_speed', 'zoom_level'];
@@ -1106,7 +1290,8 @@
                     const index = parameterKeys.indexOf(key);
                     const isCurrent = index === currentParameterIndex;
                     const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : 'color: #ffffff;';
-                    paramsHTML += `<div style="${style}">${param.name}: ${param.value.toFixed(3)}</div>`;
+                    const indicator = isCurrent && isMobile ? '👆 ' : '';
+                    paramsHTML += `<div style="${style}">${indicator}${param.name}: ${param.value.toFixed(3)}</div>`;
                 });
                 
                 paramsHTML += '<br>';
@@ -1119,9 +1304,10 @@
                     const index = parameterKeys.indexOf(key);
                     const isCurrent = index === currentParameterIndex;
                     const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : 'color: #ffffff;';
+                    const indicator = isCurrent && isMobile ? '👆 ' : '';
                     const value = key === 'kaleidoscope_segments' || key === 'layer_count' ? 
                         param.value.toFixed(0) : param.value.toFixed(3);
-                    paramsHTML += `<div style="${style}">${param.name}: ${value}</div>`;
+                    paramsHTML += `<div style="${style}">${indicator}${param.name}: ${value}</div>`;
                 });
                 
                 paramsHTML += '<br>';
@@ -1134,7 +1320,8 @@
                     const index = parameterKeys.indexOf(key);
                     const isCurrent = index === currentParameterIndex;
                     const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : 'color: #ffffff;';
-                    paramsHTML += `<div style="${style}">${param.name}: ${param.value.toFixed(3)}</div>`;
+                    const indicator = isCurrent && isMobile ? '👆 ' : '';
+                    paramsHTML += `<div style="${style}">${indicator}${param.name}: ${param.value.toFixed(3)}</div>`;
                 });
                 
                 paramsHTML += '<br>';
@@ -1147,7 +1334,8 @@
                     const index = parameterKeys.indexOf(key);
                     const isCurrent = index === currentParameterIndex;
                     const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : 'color: #ffffff;';
-                    paramsHTML += `<div style="${style}">${param.name}: ${param.value.toFixed(3)}</div>`;
+                    const indicator = isCurrent && isMobile ? '👆 ' : '';
+                    paramsHTML += `<div style="${style}">${indicator}${param.name}: ${param.value.toFixed(3)}</div>`;
                 });
                 
                 allParamsList.innerHTML = paramsHTML;
@@ -1173,11 +1361,17 @@
                 if (microphoneActive) {
                     allAudioStatus.innerHTML = '🎤 <span style="color: #4CAF50;">Microphone Active</span><br>🔊 Audio Reactive: ON<br><em>Press M to stop</em>';
                 } else if (!audioElement) {
-                    allAudioStatus.innerHTML = '🎵 No audio file loaded<br>🎤 Microphone: OFF<br>🔊 Audio Reactive: OFF<br><em>Press A for file, M for mic</em>';
+                    const instructions = isMobile ? 
+                        '🎵 No audio file loaded<br>🎤 Microphone: OFF<br>🔊 Audio Reactive: OFF<br><em>Use desktop for audio</em>' :
+                        '🎵 No audio file loaded<br>🎤 Microphone: OFF<br>🔊 Audio Reactive: OFF<br><em>Press A for file, M for mic</em>';
+                    allAudioStatus.innerHTML = instructions;
                 } else {
                     const playStatus = audioPlaying ? '<span style="color: #4CAF50;">Playing</span>' : '<span style="color: #FF9800;">Paused</span>';
                     const reactiveStatus = audioReactive ? '<span style="color: #4CAF50;">ON</span>' : '<span style="color: #FF9800;">OFF</span>';
-                    allAudioStatus.innerHTML = `🎵 File: ${playStatus}<br>🎤 Microphone: OFF<br>🔊 Audio Reactive: ${reactiveStatus}<br><em>Press A to toggle, M for mic</em>`;
+                    const instructions = isMobile ? 
+                        `🎵 File: ${playStatus}<br>🎤 Microphone: OFF<br>🔊 Audio Reactive: ${reactiveStatus}<br><em>Use desktop for audio</em>` :
+                        `🎵 File: ${playStatus}<br>🎤 Microphone: OFF<br>🔊 Audio Reactive: ${reactiveStatus}<br><em>Press A to toggle, M for mic</em>`;
+                    allAudioStatus.innerHTML = instructions;
                 }
             }
         }
