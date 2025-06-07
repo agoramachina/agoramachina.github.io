@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--
-Kaldao Fractal Visualizer v0.2.2
+Kaldao Fractal Visualizer v0.2.3
 Interactive WebGL fractal visualizer with real-time parameter control
 
 @agoramachina 2025
@@ -111,7 +111,7 @@ MIT License
                 Press ESC to close • Current parameter highlighted in green
             </div>
             <div style="text-align: center; margin-top: 10px; opacity: 0.5; font-size: 10px; color: #888;">
-                Kaldao v0.2.2
+                Kaldao v0.2.3
             </div>
         </div>
         
@@ -124,7 +124,7 @@ MIT License
                 Tap to close • Swipe ←→ for parameters • Swipe ↕ to adjust • Hold 2s to reset all
             </div>
             <div style="text-align: center; margin-top: 8px; opacity: 0.5; font-size: 9px; color: #888;">
-                Kaldao v0.2.2
+                Kaldao v0.2.3
             </div>
         </div>
     </div>
@@ -150,6 +150,7 @@ MIT License
         let initialParameterValue = 0; // Store initial value for fader behavior
         let hasMoved = false; // Track if finger has moved during touch
         let gestureType = null; // Track what type of gesture is happening
+        let userIsCurrentlyTouching = false; // Track if user is actively touching screen
         
         // Shake detection variables
         let lastShakeTime = 0;
@@ -771,13 +772,26 @@ MIT License
                         clearTimeout(controlsFadeTimeout);
                     }
                     
-                    // Set new timeout to hide UI
-                    controlsFadeTimeout = setTimeout(() => {
-                        if (!menuVisible) {
-                            ui.classList.add('hidden');
-                        }
-                    }, CONTROLS_FADE_DELAY);
+                    // Only set timeout if user is not currently touching screen
+                    if (!userIsCurrentlyTouching) {
+                        controlsFadeTimeout = setTimeout(() => {
+                            if (!menuVisible && !userIsCurrentlyTouching) {
+                                ui.classList.add('hidden');
+                                // Clear status message when UI fades out
+                                clearStatusMessage();
+                            }
+                        }, CONTROLS_FADE_DELAY);
+                    }
                 }
+            }
+        }
+        
+        // Function to clear status message
+        function clearStatusMessage() {
+            const statusDiv = document.getElementById('status');
+            if (statusDiv) {
+                statusDiv.textContent = '';
+                statusDiv.className = '';
             }
         }
 
@@ -912,6 +926,9 @@ MIT License
             }
             
             e.preventDefault();
+            
+            // Mark that user is currently touching
+            userIsCurrentlyTouching = true;
             
             // Reset controls fade timer on touch
             resetMobileUITimer();
@@ -1084,11 +1101,17 @@ MIT License
                 }
             }
             
+            // Mark that user is no longer touching
+            userIsCurrentlyTouching = false;
+            
             // Reset all touch state for next gesture
             isSwipeInProgress = false;
             longPressTriggered = false;
             hasMoved = false;
             gestureType = null;
+            
+            // Start fade timer now that user is not touching
+            resetMobileUITimer();
         }
         
         function handleDeviceMotion(e) {
