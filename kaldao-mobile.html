@@ -103,6 +103,9 @@
             <div style="text-align: center; margin-top: 15px; opacity: 0.7; font-size: 12px;">
                 Press ESC to close • Current parameter highlighted in green
             </div>
+            <div style="text-align: center; margin-top: 10px; opacity: 0.5; font-size: 10px; color: #888;">
+                Kaldao v0.2.1
+            </div>
         </div>
         
         <!-- Mobile Menu Layout -->
@@ -112,6 +115,9 @@
             
             <div style="text-align: center; margin-top: 15px; opacity: 0.7; font-size: 10px;">
                 Tap to close • Swipe ←→ for parameters • Swipe ↕ to adjust • Hold 2s to reset all
+            </div>
+            <div style="text-align: center; margin-top: 8px; opacity: 0.5; font-size: 9px; color: #888;">
+                Kaldao v0.2.1
             </div>
         </div>
     </div>
@@ -133,10 +139,12 @@
         let touchStartTime = 0;
         let isSwipeInProgress = false;
         let longPressTimeout = null;
+        let longPressTriggered = false;
+        let initialParameterValue = 0; // Store initial value for fader behavior
         
         // Shake detection variables
         let lastShakeTime = 0;
-        let shakeThreshold = 15;
+        let shakeThreshold = 25; // Increased from 15 to require harder shake
         let lastAcceleration = { x: 0, y: 0, z: 0 };
         let shakeTimeout = null;
         
@@ -690,9 +698,19 @@
         // Controls auto-fade functions
         function showControls() {
             const controls = document.getElementById('controls');
-            if (controls && !menuVisible) {
-                controls.classList.remove('hidden');
-                ui.classList.remove('hidden');
+            const ui = document.getElementById('ui');
+            
+            if (!menuVisible) {
+                // On mobile, only show UI (not controls since they're hidden via CSS)
+                if (ui) {
+                    ui.classList.remove('hidden');
+                }
+                
+                // On desktop, show both controls and UI
+                if (controls && !isMobile) {
+                    controls.classList.remove('hidden');
+                }
+                
                 controlsVisible = true;
                 
                 // Clear existing timeout
@@ -709,16 +727,48 @@
         
         function hideControls() {
             const controls = document.getElementById('controls');
-            if (controls && !menuVisible) {
-                controls.classList.add('hidden');
+            const ui = document.getElementById('ui');
+            
+            if (!menuVisible) {
+                // Hide UI on both mobile and desktop
+                if (ui) {
+                    ui.classList.add('hidden');
+                }
+                
+                // Hide controls on desktop (already hidden on mobile via CSS)
+                if (controls && !isMobile) {
+                    controls.classList.add('hidden');
+                }
+                
                 controlsVisible = false;
-                ui.classList.add('hidden');
             }
         }
         
         function resetControlsFadeTimer() {
             if (!menuVisible) {
                 showControls();
+            }
+        }
+        
+        // Mobile-specific function to handle UI hiding
+        function resetMobileUITimer() {
+            if (isMobile && !menuVisible) {
+                const ui = document.getElementById('ui');
+                if (ui) {
+                    ui.classList.remove('hidden');
+                    
+                    // Clear existing timeout
+                    if (controlsFadeTimeout) {
+                        clearTimeout(controlsFadeTimeout);
+                    }
+                    
+                    // Set new timeout to hide UI
+                    controlsFadeTimeout = setTimeout(() => {
+                        if (!menuVisible) {
+                            ui.classList.add('hidden');
+                        }
+                    }, CONTROLS_FADE_DELAY);
+                }
             }
         }
 
@@ -830,7 +880,12 @@
         }
         
         function setupMobileControls() {
-            // Touch events for gestures
+            // Touch events for gestures - attach to document for broader coverage
+            document.addEventListener('touchstart', handleTouchStart, { passive: false });
+            document.addEventListener('touchmove', handleTouchMove, { passive: false });
+            document.addEventListener('touchend', handleTouchEnd, { passive: false });
+            
+            // Also attach to canvas as backup
             canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
             canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
             canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
@@ -842,7 +897,15 @@
         }
         
         function handleTouchStart(e) {
+            // Don't prevent default on menu elements
+            if (e.target.closest('.menu')) {
+                return;
+            }
+            
             e.preventDefault();
+            
+            // Reset controls fade timer on touch
+            resetMobileUITimer();
             
             if (e.touches.length === 1) {
                 const touch = e.touches[0];
@@ -850,28 +913,55 @@
                 touchStartY = touch.clientY;
                 touchStartTime = Date.now();
                 isSwipeInProgress = true;
+                longPressTriggered = false;
+                
+                // Store initial parameter value for fader behavior
+                const paramKey = parameterKeys[currentParameterIndex];
+                initialParameterValue = parameters[paramKey].value;
                 
                 // Start long press timer for reset all
                 longPressTimeout = setTimeout(() => {
-                    if (isSwipeInProgress) {
-                        // Check if finger hasn't moved much (still in same position)
-                        const currentTouch = e.touches[0];
-                        if (currentTouch) {
-                            const deltaX = Math.abs(currentTouch.clientX - touchStartX);
-                            const deltaY = Math.abs(currentTouch.clientY - touchStartY);
-                            
-                            if (deltaX < 20 && deltaY < 20) {
-                                resetAllParameters();
-                                updateStatus('🔄 Long press detected - All parameters reset!', 'success');
-                                isSwipeInProgress = false;
+                    if (isSwipeInProgress && !longPressTriggered) {
+                        longPressTriggered = true;
+                        
+                        // Save state before reset
+                        saveStateForUndo();
+                        
+                        // Reset all parameters to default values
+                        const defaults = {
+                            fly_speed: 0.25, contrast: 1.0, kaleidoscope_segments: 10.0,
+                            truchet_radius: 0.35, center_fill_radius: 0.0, layer_count: 6,
+                            rotation_speed: 0.025, zoom_level: 0.3, color_intensity: 1.0,
+                            plane_rotation_speed: 0.5, camera_tilt_x: 0.0, camera_tilt_y: 0.0,
+                            camera_roll: 0.0, path_stability: 1.0, path_scale: 1.0, color_speed: 0.5
+                        };
+                        
+                        Object.keys(parameters).forEach(key => {
+                            if (defaults[key] !== undefined) {
+                                parameters[key].value = defaults[key];
                             }
-                        }
+                        });
+                        
+                        // Reset color settings
+                        currentPaletteIndex = 0;
+                        useColorPalette = false;
+                        invertColors = false;
+                        
+                        updateDisplay();
+                        updateMenuDisplay();
+                        updateStatus('🔄 Long press detected - All parameters reset!', 'success');
+                        isSwipeInProgress = false;
                     }
                 }, 2000); // 2 seconds
             }
         }
         
         function handleTouchMove(e) {
+            // Don't prevent default on menu elements
+            if (e.target.closest('.menu')) {
+                return;
+            }
+            
             e.preventDefault();
             
             if (!isSwipeInProgress || e.touches.length !== 1) return;
@@ -881,36 +971,65 @@
             const deltaY = touch.clientY - touchStartY;
             const deltaTime = Date.now() - touchStartTime;
             
-            // Only process if moved enough and not too slow
-            if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
-                if (deltaTime < 1000) { // Within 1 second
-                    // Determine primary direction
-                    if (Math.abs(deltaX) > Math.abs(deltaY)) {
-                        // Horizontal swipe - change parameter
-                        if (Math.abs(deltaX) > 30) {
-                            if (deltaX > 0) {
-                                switchParameter(1); // Right swipe - next parameter
-                            } else {
-                                switchParameter(-1); // Left swipe - previous parameter
-                            }
-                            isSwipeInProgress = false;
+            // Cancel long press if moved too much
+            if ((Math.abs(deltaX) > 30 || Math.abs(deltaY) > 30) && longPressTimeout && !longPressTriggered) {
+                clearTimeout(longPressTimeout);
+                longPressTimeout = null;
+            }
+            
+            // Only process gestures if not in long press mode
+            if (!longPressTriggered && deltaTime > 100) { // Small delay to avoid accidental gestures
+                // Determine primary direction
+                if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+                    // Horizontal swipe - change parameter (discrete action)
+                    if (deltaX > 0) {
+                        switchParameter(1); // Right swipe - next parameter
+                    } else {
+                        switchParameter(-1); // Left swipe - previous parameter
+                    }
+                    isSwipeInProgress = false; // End gesture after parameter switch
+                } else if (Math.abs(deltaY) > 5) {
+                    // Vertical movement - continuous fader adjustment
+                    const paramKey = parameterKeys[currentParameterIndex];
+                    const param = parameters[paramKey];
+                    
+                    // Calculate smooth fader adjustment based on movement from initial position
+                    const sensitivity = 200.0; // Higher number = less sensitive
+                    const movementDelta = touch.clientY - touchStartY;
+                    const range = param.max - param.min;
+                    const deltaValue = (-movementDelta / sensitivity) * range;
+                    
+                    // Calculate new value relative to initial parameter value
+                    let newValue = initialParameterValue + deltaValue;
+                    
+                    // Clamp to parameter bounds
+                    newValue = Math.max(param.min, Math.min(param.max, newValue));
+                    
+                    // Apply step rounding for discrete parameters
+                    if (paramKey === 'kaleidoscope_segments' || paramKey === 'layer_count') {
+                        newValue = Math.round(newValue);
+                        if (paramKey === 'kaleidoscope_segments') {
+                            newValue = Math.round(newValue / 2) * 2; // Ensure even numbers
                         }
                     } else {
-                        // Vertical swipe - adjust parameter value
-                        if (Math.abs(deltaY) > 30) {
-                            if (deltaY > 0) {
-                                adjustParameter(-1); // Down swipe - decrease value
-                            } else {
-                                adjustParameter(1); // Up swipe - increase value
-                            }
-                            isSwipeInProgress = false;
-                        }
+                        newValue = Math.round(newValue / param.step) * param.step;
+                    }
+                    
+                    // Only update if value changed to avoid unnecessary updates
+                    if (Math.abs(param.value - newValue) > 0.001) {
+                        param.value = newValue;
+                        updateDisplay();
                     }
                 }
             }
         }
         
         function handleTouchEnd(e) {
+            // Don't prevent default on menu elements
+            if (e.target.closest('.menu')) {
+                return;
+            }
+            
             e.preventDefault();
             
             // Clear long press timeout
@@ -919,7 +1038,7 @@
                 longPressTimeout = null;
             }
             
-            if (isSwipeInProgress) {
+            if (isSwipeInProgress && !longPressTriggered) {
                 const deltaTime = Date.now() - touchStartTime;
                 const deltaX = Math.abs(e.changedTouches[0].clientX - touchStartX);
                 const deltaY = Math.abs(e.changedTouches[0].clientY - touchStartY);
@@ -931,6 +1050,7 @@
             }
             
             isSwipeInProgress = false;
+            longPressTriggered = false;
         }
         
         function handleDeviceMotion(e) {
