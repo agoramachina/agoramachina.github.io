@@ -1146,8 +1146,14 @@ MIT License
                     const paramKey = parameterKeys[currentParameterIndex];
                     const param = parameters[paramKey];
                     
-                    // Less sensitive fader - higher number = less sensitive
-                    const sensitivity = 300.0; // Increased from 200 for less sensitivity
+                    // Adjust sensitivity based on parameter type
+                    let sensitivity = 300.0; // Default sensitivity
+                    if (paramKey === 'kaleidoscope_segments') {
+                        sensitivity = 600.0; // Less sensitive for kaleidoscope segments
+                    } else if (paramKey === 'zoom_level') {
+                        sensitivity = 500.0; // Less sensitive for zoom
+                    }
+                    
                     const movementDelta = touch.clientY - touchStartY;
                     const range = param.max - param.min;
                     const deltaValue = (-movementDelta / sensitivity) * range;
@@ -1282,7 +1288,7 @@ MIT License
             // Map tilt to camera tilt parameters
             // X should be controlled by left/right tilt (gamma), Y by forward/back tilt (beta)
             const tiltX = Math.max(-10, Math.min(10, (relativeGamma / maxTilt) * 10 * tiltSensitivity));
-            const tiltY = Math.max(-10, Math.min(10, (relativeBeta / maxTilt) * 10 * tiltSensitivity));
+            const tiltY = Math.max(-10, Math.min(10, (-relativeBeta / maxTilt) * 10 * tiltSensitivity)); // Inverted Y
             
             // Update camera tilt parameters
             parameters.camera_tilt_x.value = tiltX;
