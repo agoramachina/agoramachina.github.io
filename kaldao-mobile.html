@@ -124,7 +124,7 @@ MIT License
             
             <div style="text-align: center; margin-top: 15px; opacity: 0.7; font-size: 10px;">
                 Tap to close • Swipe ←→ for parameters • Swipe ↕ to adjust • Hold 2s to reset all<br>
-                Tilt device for camera • Pinch to zoom • Shake to randomize
+                Tilt device for camera • Pinch to zoom • Two-finger tap for colors • Shake to randomize
             </div>
             <div style="text-align: center; margin-top: 8px; opacity: 0.5; font-size: 9px; color: #888;">
                 Kaldao v0.2.5
@@ -164,6 +164,8 @@ MIT License
         let isPinching = false;
         let initialPinchDistance = 0;
         let initialZoomValue = 0;
+        let twoFingerTapStartTime = 0;
+        let twoFingerTapInitialDistance = 0;
         
         // Shake detection variables
         let lastShakeTime = 0;
@@ -1041,8 +1043,7 @@ MIT License
                     }
                 }, 2000); // 2 seconds
             } else if (e.touches.length === 2) {
-                // Pinch gesture start
-                isPinching = true;
+                // Two-finger gesture start
                 isSwipeInProgress = false; // Cancel any ongoing swipe
                 
                 // Clear long press timeout
@@ -1054,13 +1055,19 @@ MIT License
                 // Calculate initial distance between fingers
                 const touch1 = e.touches[0];
                 const touch2 = e.touches[1];
-                initialPinchDistance = Math.sqrt(
+                const distance = Math.sqrt(
                     Math.pow(touch2.clientX - touch1.clientX, 2) + 
                     Math.pow(touch2.clientY - touch1.clientY, 2)
                 );
                 
-                // Store initial zoom value
+                // Store values for both pinch and tap detection
+                initialPinchDistance = distance;
+                twoFingerTapInitialDistance = distance;
+                twoFingerTapStartTime = Date.now();
                 initialZoomValue = parameters.zoom_level.value;
+                
+                // Start as potential tap, will become pinch if fingers move
+                isPinching = false;
             }
         }
         
@@ -1072,8 +1079,8 @@ MIT License
             
             e.preventDefault();
             
-            // Handle pinch gesture
-            if (isPinching && e.touches.length === 2) {
+            // Handle two-finger gestures
+            if (e.touches.length === 2) {
                 const touch1 = e.touches[0];
                 const touch2 = e.touches[1];
                 const currentDistance = Math.sqrt(
@@ -1081,17 +1088,27 @@ MIT License
                     Math.pow(touch2.clientY - touch1.clientY, 2)
                 );
                 
-                // Calculate zoom change
-                const distanceRatio = currentDistance / initialPinchDistance;
-                const sensitivity = 0.8; // Adjust sensitivity (lower = less sensitive)
-                let newZoom = initialZoomValue + (distanceRatio - 1.0) * sensitivity;
+                // Check if fingers have moved enough to be considered a pinch
+                const distanceChange = Math.abs(currentDistance - twoFingerTapInitialDistance);
+                if (distanceChange > 30 && !isPinching) {
+                    // Switch from potential tap to pinch gesture
+                    isPinching = true;
+                }
                 
-                // Clamp to zoom bounds
-                newZoom = Math.max(parameters.zoom_level.min, Math.min(parameters.zoom_level.max, newZoom));
-                newZoom = Math.round(newZoom / parameters.zoom_level.step) * parameters.zoom_level.step;
-                
-                parameters.zoom_level.value = newZoom;
-                updateDisplay();
+                // Handle pinch zoom if we're in pinch mode
+                if (isPinching) {
+                    // Calculate zoom change
+                    const distanceRatio = currentDistance / initialPinchDistance;
+                    const sensitivity = 0.6; // Adjust sensitivity (lower = less sensitive)
+                    let newZoom = initialZoomValue + (distanceRatio - 1.0) * sensitivity;
+                    
+                    // Clamp to zoom bounds
+                    newZoom = Math.max(parameters.zoom_level.min, Math.min(parameters.zoom_level.max, newZoom));
+                    newZoom = Math.round(newZoom / parameters.zoom_level.step) * parameters.zoom_level.step;
+                    
+                    parameters.zoom_level.value = newZoom;
+                    updateDisplay();
+                }
                 return;
             }
             
@@ -1195,6 +1212,17 @@ MIT License
                 longPressTimeout = null;
             }
             
+            // Check for two-finger tap (if no touches remain, it was a two-finger release)
+            if (e.changedTouches.length === 2 && !isPinching && twoFingerTapStartTime > 0) {
+                const tapDuration = Date.now() - twoFingerTapStartTime;
+                
+                // If it was a quick tap (less than 300ms), randomize colors
+                if (tapDuration < 300) {
+                    randomizeColors();
+                    updateStatus('🎨 Two-finger tap - Colors randomized!', 'success');
+                }
+            }
+            
             if (isSwipeInProgress && !longPressTriggered) {
                 const deltaTime = Date.now() - touchStartTime;
                 
@@ -1219,6 +1247,8 @@ MIT License
             hasMoved = false;
             gestureType = null;
             isPinching = false;
+            twoFingerTapStartTime = 0;
+            twoFingerTapInitialDistance = 0;
             
             // Start fade timer now that user is not touching
             resetMobileUITimer();
