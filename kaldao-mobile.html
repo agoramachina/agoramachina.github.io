@@ -2,21 +2,35 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Kaldao Fractal Visualizer - Complete</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #000; color: #fff; font-family: 'Courier New', monospace; overflow: hidden; }
+        body { background: #000; color: #fff; font-family: 'Courier New', monospace; overflow: hidden; touch-action: manipulation; }
         #canvas { display: block; }
         .ui { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.8); padding: 15px; border-radius: 8px; font-size: 14px; max-width: 400px; transition: opacity 0.3s ease; }
         .controls { position: absolute; top: 20px; right: 20px; background: rgba(0,0,0,0.8); padding: 15px; border-radius: 8px; font-size: 12px; transition: opacity 0.3s ease; }
-        .menu { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.95); padding: 30px; border-radius: 12px; border: 2px solid #444; max-width: 600px; z-index: 1000; }
+        .menu { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.95); padding: 20px; border-radius: 12px; border: 2px solid #444; max-width: 95vw; max-height: 90vh; overflow-y: auto; z-index: 1000; }
         .menu h2 { color: #4CAF50; margin-bottom: 20px; text-align: center; }
         .menu .section { margin-bottom: 15px; }
         .menu .section h3 { color: #FFC107; margin-bottom: 8px; }
         .hidden { opacity: 0; pointer-events: none; }
         .error { color: #ff4444; }
         .success { color: #44ff44; }
+        
+        /* Mobile-specific styles */
+        @media (max-width: 768px) {
+            .ui { top: 10px; left: 10px; padding: 10px; font-size: 12px; max-width: calc(60vw - 20px); }
+            .controls { display: none; } /* Hide keyboard controls on mobile */
+            .menu { padding: 15px; max-width: 90vw; }
+            .menu-desktop { display: none; } /* Hide desktop menu layout on mobile */
+            .menu-mobile { display: block; } /* Show mobile menu layout */
+        }
+        
+        @media (min-width: 769px) {
+            .menu-desktop { display: block; }
+            .menu-mobile { display: none; }
+        }
     </style>
 </head>
 <body>
@@ -30,8 +44,8 @@
     
     <div class="controls" id="controls">
         <strong>CONTROLS</strong><br>
-        ↑/↓ Adjust parameter<br>
-        ←/→ Switch parameter<br>
+        ↑/↓ Switch parameter<br>
+        ←/→ Adjust parameter<br>
         C Randomize colors<br>
         Shift+C Reset to B&W<br>
         R Reset current<br>
@@ -42,68 +56,63 @@
         S Save parameters<br>
         L Load parameters<br>
         A Upload audio file<br>
+        M Toggle microphone<br>
         Ctrl+Z Undo<br>
         Ctrl+Y Redo<br>
-        ESC Toggle menu<br>
+        ESC Toggle all parameters<br>
     </div>
 
-    <!-- Full Menu -->
+    <!-- All Parameters Display -->
     <div class="menu hidden" id="menu">
-        <h2>🌀 Kaldao Fractal Visualizer</h2>
-        
-        <div class="section">
-            <h3>📊 Current Parameters</h3>
-            <div id="menuParamsList">Loading...</div>
+        <!-- Desktop Menu Layout -->
+        <div class="menu-desktop">
+            <div style="display: flex; gap: 20px; width: 100%;">
+                <div style="flex: 1; min-width: 300px;">
+                    <h2 style="color: #4CAF50; margin-bottom: 15px; font-size: 18px;">📊 All Parameters</h2>
+                    <div id="allParametersList" style="font-family: monospace; font-size: 12px; line-height: 1.3;"></div>
+                </div>
+                
+                <div style="flex: 1; min-width: 300px;">
+                    <h2 style="color: #FFC107; margin-bottom: 15px; font-size: 18px;">🎨 Color & Audio</h2>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <h3 style="color: #FFC107; margin-bottom: 8px; font-size: 14px;">Color Palettes</h3>
+                        <div id="allPalettesList" style="font-family: monospace; font-size: 12px; line-height: 1.3;"></div>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <h3 style="color: #FFC107; margin-bottom: 8px; font-size: 14px;">Audio Status</h3>
+                        <div id="allAudioStatus" style="font-family: monospace; font-size: 12px; line-height: 1.3;"></div>
+                    </div>
+                    
+                    <div>
+                        <h3 style="color: #FFC107; margin-bottom: 8px; font-size: 14px;">Quick Controls</h3>
+                        <div style="font-size: 11px; line-height: 1.2;">
+                            <strong>Navigation:</strong> ↑/↓ switch • ←/→ adjust<br>
+                            <strong>Randomize:</strong> C colors • . parameters<br>
+                            <strong>Reset:</strong> R current • Shift+R all<br>
+                            <strong>Audio:</strong> A upload • M microphone<br>
+                            <strong>Files:</strong> S save • L load<br>
+                            <strong>Undo:</strong> Ctrl+Z/Y • Space pause<br>
+                            <strong>Colors:</strong> I invert • Shift+C reset<br>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 15px; opacity: 0.7; font-size: 12px;">
+                Press ESC to close • Current parameter highlighted in green
+            </div>
         </div>
         
-        <div class="section">
-            <h3>🎮 Controls</h3>
-            <strong>Navigation:</strong><br>
-            ↑/↓ - Adjust current parameter<br>
-            ←/→ - Switch between parameters<br><br>
+        <!-- Mobile Menu Layout -->
+        <div class="menu-mobile">
+            <h2 style="color: #4CAF50; margin-bottom: 15px; font-size: 16px;">📊 All Parameters</h2>
+            <div id="allParametersListMobile" style="font-family: monospace; font-size: 11px; line-height: 1.3;"></div>
             
-            <strong>Randomization:</strong><br>
-            C - Randomize colors<br>
-            Shift+C - Reset to black & white<br>
-            . - Randomize all parameters<br><br>
-            
-            <strong>Reset:</strong><br>
-            R - Reset current parameter<br>
-            Shift+R - Reset all parameters<br><br>
-            
-            <strong>Colors:</strong><br>
-            I - Invert colors<br><br>
-            
-            <strong>Animation:</strong><br>
-            Space - Pause/unpause animation<br><br>
-            
-            <strong>Save/Load:</strong><br>
-            S - Save parameters to file<br>
-            L - Load parameters from file<br><br>
-            
-            <strong>Audio:</strong><br>
-            A - Upload audio file & toggle reactivity<br><br>
-            
-            <strong>Undo/Redo:</strong><br>
-            Ctrl+Z - Undo last change<br>
-            Ctrl+Y - Redo last undone change<br><br>
-            
-            <strong>Menu:</strong><br>
-            ESC - Toggle this menu<br>
-        </div>
-        
-        <div class="section">
-            <h3>🎨 Available Color Palettes</h3>
-            <div id="menuPalettesList">Loading...</div>
-        </div>
-        
-        <div class="section">
-            <h3>🎵 Audio Status</h3>
-            <div id="menuAudioStatus">No audio loaded</div>
-        </div>
-        
-        <div style="text-align: center; margin-top: 20px; opacity: 0.7;">
-            Press ESC to close menu
+            <div style="text-align: center; margin-top: 15px; opacity: 0.7; font-size: 10px;">
+                Tap to close • Swipe ←→ for parameters • Swipe ↕ to adjust • Hold 2s to reset all
+            </div>
         </div>
     </div>
 
@@ -117,6 +126,25 @@
         let invertColors = false;
         let menuVisible = false;
         
+        // Mobile touch variables
+        let isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchStartTime = 0;
+        let isSwipeInProgress = false;
+        let longPressTimeout = null;
+        
+        // Shake detection variables
+        let lastShakeTime = 0;
+        let shakeThreshold = 15;
+        let lastAcceleration = { x: 0, y: 0, z: 0 };
+        let shakeTimeout = null;
+        
+        // Controls menu auto-fade system
+        let controlsVisible = true;
+        let controlsFadeTimeout = null;
+        const CONTROLS_FADE_DELAY = 3000; // 3 seconds
+        
         // Audio system
         let audioContext = null;
         let audioSource = null;
@@ -126,6 +154,31 @@
         let audioReactive = false;
         let audioPlaying = false;
         let baseParameterValues = {};
+        
+        // Audio modifiers - these multiply the base parameters
+        let audioModifiers = {
+            fly_speed: 1.0,
+            contrast: 1.0,
+            kaleidoscope_segments: 1.0,
+            truchet_radius: 1.0,
+            center_fill_radius: 1.0,
+            layer_count: 1.0,
+            rotation_speed: 1.0,
+            zoom_level: 1.0,
+            color_intensity: 1.0,
+            plane_rotation_speed: 1.0,
+            camera_tilt_x: 1.0,
+            camera_tilt_y: 1.0,
+            camera_roll: 1.0,
+            path_stability: 1.0,
+            path_scale: 1.0,
+            color_speed: 1.0
+        };
+        
+        // Microphone system
+        let microphoneStream = null;
+        let microphoneSource = null;
+        let microphoneActive = false;
 
         // Undo/Redo system
         let undoStack = [];
@@ -136,7 +189,7 @@
         const parameters = {
             fly_speed: { value: 0.25, min: -3.0, max: 3.0, step: 0.1, name: "Fly Speed" },
             contrast: { value: 1.0, min: 0.1, max: 5.0, step: 0.1, name: "Contrast" },
-            kaleidoscope_segments: { value: 10.0, min: 4.0, max: 80.0, step: 2.0, name: "Kaleidoscope Segments" },
+            kaleidoscope_segments: { value: 10.0, min: 4.0, max: 200.0, step: 2.0, name: "Kaleidoscope Segments" },
             truchet_radius: { value: 0.35, min: -1.0, max: 1.0, step: 0.01, name: "Truchet Radius" },
             center_fill_radius: { value: 0.0, min: -2.0, max: 2.0, step: 0.01, name: "Center Fill Radius" },
             layer_count: { value: 6, min: 1, max: 10, step: 1, name: "Layer Count" },
@@ -171,7 +224,17 @@
             { name: "Sunset", a: [0.7, 0.3, 0.2], b: [0.3, 0.2, 0.1], c: [1.5, 1.0, 0.8], d: [0.0, 0.1, 0.3] }
         ];
 
-        const parameterKeys = Object.keys(parameters);
+        // Parameter keys in the order they appear in the menu display
+        const parameterKeys = [
+            // MOVEMENT & ANIMATION
+            'fly_speed', 'rotation_speed', 'plane_rotation_speed', 'zoom_level',
+            // PATTERN & VISUAL  
+            'kaleidoscope_segments', 'truchet_radius', 'center_fill_radius', 'layer_count', 'contrast', 'color_intensity',
+            // CAMERA & PATH
+            'camera_tilt_x', 'camera_tilt_y', 'camera_roll', 'path_stability', 'path_scale',
+            // COLOR & SPEED
+            'color_speed'
+        ];
 
         // Shaders
         const vertexShaderSource = `
@@ -301,9 +364,13 @@
                 vec2 hp = p;
                 vec2 hpp = toPolar(hp);
                 
-                float rn = modMirror1(hpp.y, 2.0 * PI / rep);
+                // Ensure rep is always even for proper mirroring
+                float evenRep = floor(rep * 0.5) * 2.0;
+                evenRep = max(evenRep, 4.0); // Minimum of 4 segments
                 
-                float sa = PI / rep - pabs(PI / rep - abs(hpp.y), sm);
+                float rn = modMirror1(hpp.y, 2.0 * PI / evenRep);
+                
+                float sa = PI / evenRep - pabs(PI / evenRep - abs(hpp.y), sm);
                 hpp.y = sign(hpp.y) * sa;
                 
                 hp = toRect(hpp);
@@ -547,6 +614,9 @@
                 
                 updateStatus('✅ Kaldao loaded successfully!', 'success');
                 updateDisplay();
+                // Start controls auto-fade timer
+                showControls();
+                
                 render();
                 
             } catch (error) {
@@ -617,25 +687,64 @@
             });
         }
 
+        // Controls auto-fade functions
+        function showControls() {
+            const controls = document.getElementById('controls');
+            if (controls && !menuVisible) {
+                controls.classList.remove('hidden');
+                ui.classList.remove('hidden');
+                controlsVisible = true;
+                
+                // Clear existing timeout
+                if (controlsFadeTimeout) {
+                    clearTimeout(controlsFadeTimeout);
+                }
+                
+                // Set new timeout to hide controls
+                controlsFadeTimeout = setTimeout(() => {
+                    hideControls();
+                }, CONTROLS_FADE_DELAY);
+            }
+        }
+        
+        function hideControls() {
+            const controls = document.getElementById('controls');
+            if (controls && !menuVisible) {
+                controls.classList.add('hidden');
+                controlsVisible = false;
+                ui.classList.add('hidden');
+            }
+        }
+        
+        function resetControlsFadeTimer() {
+            if (!menuVisible) {
+                showControls();
+            }
+        }
+
         function setupControls() {
+            // Keyboard controls for desktop
             document.addEventListener('keydown', (e) => {
                 try {
+                    // Reset controls fade timer on any keypress
+                    resetControlsFadeTimer();
+                    
                     switch(e.code) {
                         case 'ArrowUp':
                             e.preventDefault();
-                            adjustParameter(1);
+                            switchParameter(-1);
                             break;
                         case 'ArrowDown':
                             e.preventDefault();
-                            adjustParameter(-1);
+                            switchParameter(1);
                             break;
                         case 'ArrowLeft':
                             e.preventDefault();
-                            switchParameter(-1);
+                            adjustParameter(-1);
                             break;
                         case 'ArrowRight':
                             e.preventDefault();
-                            switchParameter(1);
+                            adjustParameter(1);
                             break;
                         case 'Space':
                             e.preventDefault();
@@ -696,11 +805,20 @@
                                 redo();
                             }
                             break;
+                        case 'KeyM':
+                            e.preventDefault();
+                            toggleMicrophone();
+                            break;
                     }
                 } catch (error) {
                     updateStatus(`Input error: ${error.message}`, 'error');
                 }
             });
+
+            // Mobile touch controls
+            if (isMobile) {
+                setupMobileControls();
+            }
 
             window.addEventListener('resize', () => {
                 if (canvas && gl) {
@@ -709,6 +827,146 @@
                     gl.viewport(0, 0, canvas.width, canvas.height);
                 }
             });
+        }
+        
+        function setupMobileControls() {
+            // Touch events for gestures
+            canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+            canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+            canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+            
+            // Device motion for shake detection
+            if (window.DeviceMotionEvent) {
+                window.addEventListener('devicemotion', handleDeviceMotion);
+            }
+        }
+        
+        function handleTouchStart(e) {
+            e.preventDefault();
+            
+            if (e.touches.length === 1) {
+                const touch = e.touches[0];
+                touchStartX = touch.clientX;
+                touchStartY = touch.clientY;
+                touchStartTime = Date.now();
+                isSwipeInProgress = true;
+                
+                // Start long press timer for reset all
+                longPressTimeout = setTimeout(() => {
+                    if (isSwipeInProgress) {
+                        // Check if finger hasn't moved much (still in same position)
+                        const currentTouch = e.touches[0];
+                        if (currentTouch) {
+                            const deltaX = Math.abs(currentTouch.clientX - touchStartX);
+                            const deltaY = Math.abs(currentTouch.clientY - touchStartY);
+                            
+                            if (deltaX < 20 && deltaY < 20) {
+                                resetAllParameters();
+                                updateStatus('🔄 Long press detected - All parameters reset!', 'success');
+                                isSwipeInProgress = false;
+                            }
+                        }
+                    }
+                }, 2000); // 2 seconds
+            }
+        }
+        
+        function handleTouchMove(e) {
+            e.preventDefault();
+            
+            if (!isSwipeInProgress || e.touches.length !== 1) return;
+            
+            const touch = e.touches[0];
+            const deltaX = touch.clientX - touchStartX;
+            const deltaY = touch.clientY - touchStartY;
+            const deltaTime = Date.now() - touchStartTime;
+            
+            // Only process if moved enough and not too slow
+            if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
+                if (deltaTime < 1000) { // Within 1 second
+                    // Determine primary direction
+                    if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                        // Horizontal swipe - change parameter
+                        if (Math.abs(deltaX) > 30) {
+                            if (deltaX > 0) {
+                                switchParameter(1); // Right swipe - next parameter
+                            } else {
+                                switchParameter(-1); // Left swipe - previous parameter
+                            }
+                            isSwipeInProgress = false;
+                        }
+                    } else {
+                        // Vertical swipe - adjust parameter value
+                        if (Math.abs(deltaY) > 30) {
+                            if (deltaY > 0) {
+                                adjustParameter(-1); // Down swipe - decrease value
+                            } else {
+                                adjustParameter(1); // Up swipe - increase value
+                            }
+                            isSwipeInProgress = false;
+                        }
+                    }
+                }
+            }
+        }
+        
+        function handleTouchEnd(e) {
+            e.preventDefault();
+            
+            // Clear long press timeout
+            if (longPressTimeout) {
+                clearTimeout(longPressTimeout);
+                longPressTimeout = null;
+            }
+            
+            if (isSwipeInProgress) {
+                const deltaTime = Date.now() - touchStartTime;
+                const deltaX = Math.abs(e.changedTouches[0].clientX - touchStartX);
+                const deltaY = Math.abs(e.changedTouches[0].clientY - touchStartY);
+                
+                // If it was a short tap without much movement, toggle menu
+                if (deltaTime < 300 && deltaX < 20 && deltaY < 20) {
+                    toggleMenu();
+                }
+            }
+            
+            isSwipeInProgress = false;
+        }
+        
+        function handleDeviceMotion(e) {
+            if (!e.accelerationIncludingGravity) return;
+            
+            const acceleration = e.accelerationIncludingGravity;
+            const currentTime = Date.now();
+            
+            // Calculate acceleration delta
+            const deltaX = Math.abs(acceleration.x - lastAcceleration.x);
+            const deltaY = Math.abs(acceleration.y - lastAcceleration.y);
+            const deltaZ = Math.abs(acceleration.z - lastAcceleration.z);
+            
+            const totalDelta = deltaX + deltaY + deltaZ;
+            
+            // Detect shake
+            if (totalDelta > shakeThreshold && currentTime - lastShakeTime > 1000) {
+                lastShakeTime = currentTime;
+                
+                // Clear any existing timeout
+                if (shakeTimeout) {
+                    clearTimeout(shakeTimeout);
+                }
+                
+                // Debounce shake detection
+                shakeTimeout = setTimeout(() => {
+                    randomizeParameters();
+                    updateStatus('🎲 Shake detected - Parameters randomized!', 'success');
+                }, 100);
+            }
+            
+            lastAcceleration = {
+                x: acceleration.x,
+                y: acceleration.y,
+                z: acceleration.z
+            };
         }
 
         function updateStatus(message, type = 'info') {
@@ -1022,41 +1280,102 @@
         function updateMenuDisplay() {
             if (!menuVisible) return;
             
-            // Update parameters list
-            const paramsList = document.getElementById('menuParamsList');
-            if (paramsList) {
+            // Generate parameters HTML
+            function generateParametersHTML() {
                 let paramsHTML = '';
-                Object.keys(parameters).forEach((key, index) => {
+                
+                // Movement & Animation
+                paramsHTML += '<div style="color: #4CAF50; font-weight: bold; margin-bottom: 5px;">MOVEMENT & ANIMATION</div>';
+                const movementParams = ['fly_speed', 'rotation_speed', 'plane_rotation_speed', 'zoom_level'];
+                movementParams.forEach(key => {
                     const param = parameters[key];
+                    const index = parameterKeys.indexOf(key);
                     const isCurrent = index === currentParameterIndex;
-                    const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : '';
+                    const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : 'color: #ffffff;';
                     paramsHTML += `<div style="${style}">${param.name}: ${param.value.toFixed(3)}</div>`;
                 });
-                paramsList.innerHTML = paramsHTML;
+                
+                paramsHTML += '<br>';
+                
+                // Pattern & Visual
+                paramsHTML += '<div style="color: #FFC107; font-weight: bold; margin-bottom: 5px;">PATTERN & VISUAL</div>';
+                const patternParams = ['kaleidoscope_segments', 'truchet_radius', 'center_fill_radius', 'layer_count', 'contrast', 'color_intensity'];
+                patternParams.forEach(key => {
+                    const param = parameters[key];
+                    const index = parameterKeys.indexOf(key);
+                    const isCurrent = index === currentParameterIndex;
+                    const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : 'color: #ffffff;';
+                    const value = key === 'kaleidoscope_segments' || key === 'layer_count' ? 
+                        param.value.toFixed(0) : param.value.toFixed(3);
+                    paramsHTML += `<div style="${style}">${param.name}: ${value}</div>`;
+                });
+                
+                paramsHTML += '<br>';
+                
+                // Camera & Path
+                paramsHTML += '<div style="color: #9C27B0; font-weight: bold; margin-bottom: 5px;">CAMERA & PATH</div>';
+                const cameraParams = ['camera_tilt_x', 'camera_tilt_y', 'camera_roll', 'path_stability', 'path_scale'];
+                cameraParams.forEach(key => {
+                    const param = parameters[key];
+                    const index = parameterKeys.indexOf(key);
+                    const isCurrent = index === currentParameterIndex;
+                    const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : 'color: #ffffff;';
+                    paramsHTML += `<div style="${style}">${param.name}: ${param.value.toFixed(3)}</div>`;
+                });
+                
+                paramsHTML += '<br>';
+                
+                // Color & Animation Speed
+                paramsHTML += '<div style="color: #FF5722; font-weight: bold; margin-bottom: 5px;">COLOR & SPEED</div>';
+                const colorParams = ['color_speed'];
+                colorParams.forEach(key => {
+                    const param = parameters[key];
+                    const index = parameterKeys.indexOf(key);
+                    const isCurrent = index === currentParameterIndex;
+                    const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : 'color: #ffffff;';
+                    paramsHTML += `<div style="${style}">${param.name}: ${param.value.toFixed(3)}</div>`;
+                });
+                
+                return paramsHTML;
+            }
+            
+            // Update desktop parameters list
+            const allParamsList = document.getElementById('allParametersList');
+            if (allParamsList) {
+                allParamsList.innerHTML = generateParametersHTML();
+            }
+            
+            // Update mobile parameters list
+            const allParamsListMobile = document.getElementById('allParametersListMobile');
+            if (allParamsListMobile) {
+                allParamsListMobile.innerHTML = generateParametersHTML();
             }
             
             // Update palettes list
-            const palettesList = document.getElementById('menuPalettesList');
-            if (palettesList) {
+            const allPalettesList = document.getElementById('allPalettesList');
+            if (allPalettesList) {
                 let palettesHTML = '';
                 colorPalettes.forEach((palette, index) => {
                     const isCurrent = index === currentPaletteIndex;
-                    const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : '';
+                    const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : 'color: #ffffff;';
                     const inverted = isCurrent && invertColors ? ' (Inverted)' : '';
-                    palettesHTML += `<div style="${style}">${palette.name}${inverted}</div>`;
+                    const active = isCurrent && useColorPalette ? ' ●' : (isCurrent ? ' ○' : '');
+                    palettesHTML += `<div style="${style}">${palette.name}${inverted}${active}</div>`;
                 });
-                palettesList.innerHTML = palettesHTML;
+                allPalettesList.innerHTML = palettesHTML;
             }
             
             // Update audio status
-            const audioStatus = document.getElementById('menuAudioStatus');
-            if (audioStatus) {
-                if (!audioElement) {
-                    audioStatus.innerHTML = '🎵 No audio loaded<br><em>Press A to upload audio file</em>';
+            const allAudioStatus = document.getElementById('allAudioStatus');
+            if (allAudioStatus) {
+                if (microphoneActive) {
+                    allAudioStatus.innerHTML = '🎤 <span style="color: #4CAF50;">Microphone Active</span><br>🔊 Audio Reactive: ON<br><em>Press M to stop</em>';
+                } else if (!audioElement) {
+                    allAudioStatus.innerHTML = '🎵 No audio file loaded<br>🎤 Microphone: OFF<br>🔊 Audio Reactive: OFF<br><em>Press A for file, M for mic</em>';
                 } else {
-                    const status = audioPlaying ? '▶️ Playing' : '⏸️ Paused';
-                    const reactive = audioReactive ? ' (Reactive)' : '';
-                    audioStatus.innerHTML = `${status}${reactive}<br><em>Press A to toggle</em>`;
+                    const playStatus = audioPlaying ? '<span style="color: #4CAF50;">Playing</span>' : '<span style="color: #FF9800;">Paused</span>';
+                    const reactiveStatus = audioReactive ? '<span style="color: #4CAF50;">ON</span>' : '<span style="color: #FF9800;">OFF</span>';
+                    allAudioStatus.innerHTML = `🎵 File: ${playStatus}<br>🎤 Microphone: OFF<br>🔊 Audio Reactive: ${reactiveStatus}<br><em>Press A to toggle, M for mic</em>`;
                 }
             }
         }
@@ -1318,6 +1637,7 @@
 
         function storeBaseParameters() {
             // Store current parameter values as base values for audio reactivity
+            // These remain unchanged by audio - only the modifiers change
             baseParameterValues = {};
             Object.keys(parameters).forEach(key => {
                 baseParameterValues[key] = parameters[key].value;
@@ -1325,17 +1645,13 @@
         }
 
         function restoreBaseParameters() {
-            // Restore parameters to their base values
-            Object.keys(baseParameterValues).forEach(key => {
-                if (parameters[key]) {
-                    parameters[key].value = baseParameterValues[key];
-                }
-            });
+            // This function is no longer needed since we use modifiers
+            // But we'll keep it for backward compatibility
             updateDisplay();
         }
 
         function analyzeAudio() {
-            if (!analyser || !audioData || !audioReactive || !audioPlaying) {
+            if (!analyser || !audioData || !audioReactive || (!audioPlaying && !microphoneActive)) {
                 return { bass: 0, mid: 0, treble: 0, overall: 0 };
             }
             
@@ -1363,60 +1679,135 @@
         }
 
         function applyAudioReactivity() {
-            if (!audioReactive || !audioPlaying) return;
+            if (!audioReactive || (!audioPlaying && !microphoneActive)) {
+                // Reset all modifiers to 1.0 when not reactive
+                Object.keys(audioModifiers).forEach(key => {
+                    audioModifiers[key] = 1.0;
+                });
+                return;
+            }
             
             const audioLevels = analyzeAudio();
             
-            // Apply audio modulation to parameters (relative to base values)
-            const bassInfluence = audioLevels.bass * 2.0;
-            const midInfluence = audioLevels.mid * 1.5;
-            const trebleInfluence = audioLevels.treble * 1.0;
+            // Create dynamic multipliers based on audio
+            const bassMultiplier = 1.0 + (audioLevels.bass * 0.8);      // 1.0 to 1.8x
+            const midMultiplier = 1.0 + (audioLevels.mid * 0.4);        // 1.0 to 1.4x
+            const trebleMultiplier = 1.0 + (audioLevels.treble * 0.3);  // 1.0 to 1.3x
+            const overallMultiplier = 1.0 + (audioLevels.overall * 0.5); // 1.0 to 1.5x
             
-            // Bass affects truchet radius and zoom
-            if (baseParameterValues.truchet_radius !== undefined) {
-                const baseRadius = baseParameterValues.truchet_radius;
-                parameters.truchet_radius.value = baseRadius + (bassInfluence * 0.3);
-                parameters.truchet_radius.value = Math.max(parameters.truchet_radius.min, 
-                    Math.min(parameters.truchet_radius.max, parameters.truchet_radius.value));
+            // Bass effects - make the center circle really pulse!
+            audioModifiers.center_fill_radius = bassMultiplier * 1.5; // Extra bass sensitivity for center
+            audioModifiers.truchet_radius = bassMultiplier;
+            audioModifiers.zoom_level = 1.0 + (audioLevels.bass * 0.3); // Slight zoom pulse
+            
+            // Mid frequencies affect rotation and movement
+            audioModifiers.rotation_speed = midMultiplier;
+            audioModifiers.plane_rotation_speed = midMultiplier;
+            audioModifiers.fly_speed = 1.0 + (audioLevels.mid * 0.6);
+            
+            // Treble affects visual complexity and color
+            audioModifiers.kaleidoscope_segments = trebleMultiplier;
+            audioModifiers.color_intensity = trebleMultiplier;
+            audioModifiers.color_speed = trebleMultiplier;
+            
+            // Overall volume affects contrast and layer count
+            audioModifiers.contrast = overallMultiplier;
+            audioModifiers.layer_count = 1.0 + (audioLevels.overall * 0.3);
+            
+            // Path effects for more dynamic movement
+            audioModifiers.path_scale = 1.0 + (audioLevels.overall * 0.4);
+        }
+
+        async function toggleMicrophone() {
+            if (!audioContext) {
+                await initAudioContext();
             }
             
-            if (baseParameterValues.zoom_level !== undefined) {
-                const baseZoom = baseParameterValues.zoom_level;
-                parameters.zoom_level.value = baseZoom + (bassInfluence * 0.5);
-                parameters.zoom_level.value = Math.max(parameters.zoom_level.min, 
-                    Math.min(parameters.zoom_level.max, parameters.zoom_level.value));
+            if (microphoneActive) {
+                // Stop microphone
+                stopMicrophone();
+            } else {
+                // Start microphone
+                await startMicrophone();
             }
-            
-            // Mid frequencies affect rotation speed
-            if (baseParameterValues.rotation_speed !== undefined) {
-                const baseRotation = baseParameterValues.rotation_speed;
-                parameters.rotation_speed.value = baseRotation + (midInfluence * 0.1);
-                parameters.rotation_speed.value = Math.max(parameters.rotation_speed.min, 
-                    Math.min(parameters.rotation_speed.max, parameters.rotation_speed.value));
+        }
+
+        async function startMicrophone() {
+            try {
+                updateStatus('🎤 Requesting microphone access...', 'info');
+                
+                // Request microphone access
+                microphoneStream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false
+                    } 
+                });
+                
+                // Resume audio context if needed
+                if (audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                }
+                
+                // Stop any playing audio file
+                if (audioElement && audioPlaying) {
+                    audioElement.pause();
+                    audioPlaying = false;
+                }
+                
+                // Connect microphone to analyzer
+                microphoneSource = audioContext.createMediaStreamSource(microphoneStream);
+                microphoneSource.connect(analyser);
+                
+                microphoneActive = true;
+                audioReactive = true;
+                storeBaseParameters();
+                
+                updateStatus('🎤 Microphone active with reactivity!', 'success');
+                updateMenuDisplay();
+                
+            } catch (error) {
+                console.error('Microphone access error:', error);
+                let errorMessage = 'Failed to access microphone';
+                
+                if (error.name === 'NotAllowedError') {
+                    errorMessage = 'Microphone access denied. Please allow microphone access and try again.';
+                } else if (error.name === 'NotFoundError') {
+                    errorMessage = 'No microphone found. Please connect a microphone and try again.';
+                } else if (error.name === 'NotReadableError') {
+                    errorMessage = 'Microphone is busy or not available.';
+                }
+                
+                updateStatus(`❌ ${errorMessage}`, 'error');
+                microphoneActive = false;
             }
-            
-            // Treble affects kaleidoscope segments and color intensity
-            if (baseParameterValues.kaleidoscope_segments !== undefined) {
-                const baseSegments = baseParameterValues.kaleidoscope_segments;
-                let newSegments = baseSegments + (trebleInfluence * 20.0);
-                newSegments = Math.round(newSegments / 2) * 2; // Keep even
-                parameters.kaleidoscope_segments.value = Math.max(parameters.kaleidoscope_segments.min, 
-                    Math.min(parameters.kaleidoscope_segments.max, newSegments));
-            }
-            
-            if (baseParameterValues.color_intensity !== undefined) {
-                const baseIntensity = baseParameterValues.color_intensity;
-                parameters.color_intensity.value = baseIntensity + (trebleInfluence * 0.8);
-                parameters.color_intensity.value = Math.max(parameters.color_intensity.min, 
-                    Math.min(parameters.color_intensity.max, parameters.color_intensity.value));
-            }
-            
-            // Overall volume affects fly speed
-            if (baseParameterValues.fly_speed !== undefined) {
-                const baseSpeed = baseParameterValues.fly_speed;
-                parameters.fly_speed.value = baseSpeed + (audioLevels.overall * 1.0);
-                parameters.fly_speed.value = Math.max(parameters.fly_speed.min, 
-                    Math.min(parameters.fly_speed.max, parameters.fly_speed.value));
+        }
+
+        function stopMicrophone() {
+            try {
+                // Stop microphone stream
+                if (microphoneStream) {
+                    microphoneStream.getTracks().forEach(track => track.stop());
+                    microphoneStream = null;
+                }
+                
+                // Disconnect microphone source
+                if (microphoneSource) {
+                    microphoneSource.disconnect();
+                    microphoneSource = null;
+                }
+                
+                microphoneActive = false;
+                audioReactive = false;
+                restoreBaseParameters();
+                
+                updateStatus('🎤 Microphone stopped', 'info');
+                updateMenuDisplay();
+                
+            } catch (error) {
+                console.error('Error stopping microphone:', error);
+                updateStatus('❌ Error stopping microphone', 'error');
             }
         }
 
@@ -1424,44 +1815,44 @@
             try {
                 const deltaTime = 1.0 / 60.0;
 
-                // Apply audio reactivity before updating time accumulation
-                if (audioReactive && audioPlaying) {
-                    applyAudioReactivity();
-                }
+                // Apply audio reactivity to update modifiers
+                applyAudioReactivity();
 
                 if (!animationPaused) {
-                    timeAccumulation.camera_position += parameters.fly_speed.value * deltaTime;
-                    timeAccumulation.rotation_time += parameters.rotation_speed.value * deltaTime;
-                    timeAccumulation.plane_rotation_time += parameters.plane_rotation_speed.value * deltaTime;
-                    timeAccumulation.color_time += parameters.color_speed.value * deltaTime;
+                    timeAccumulation.camera_position += parameters.fly_speed.value * audioModifiers.fly_speed * deltaTime;
+                    timeAccumulation.rotation_time += parameters.rotation_speed.value * audioModifiers.rotation_speed * deltaTime;
+                    timeAccumulation.plane_rotation_time += parameters.plane_rotation_speed.value * audioModifiers.plane_rotation_speed * deltaTime;
+                    timeAccumulation.color_time += parameters.color_speed.value * audioModifiers.color_speed * deltaTime;
                 }
 
                 gl.viewport(0, 0, canvas.width, canvas.height);
                 gl.useProgram(program);
                 
-                // Set all uniforms
+                // Set all uniforms using base parameters multiplied by audio modifiers
                 gl.uniform2f(uniforms.u_resolution, canvas.width, canvas.height);
                 gl.uniform1f(uniforms.u_time, performance.now() * 0.001);
                 gl.uniform1f(uniforms.u_camera_position, timeAccumulation.camera_position);
                 gl.uniform1f(uniforms.u_rotation_time, timeAccumulation.rotation_time);
                 gl.uniform1f(uniforms.u_plane_rotation_time, timeAccumulation.plane_rotation_time);
                 gl.uniform1f(uniforms.u_color_time, timeAccumulation.color_time);
-                gl.uniform1f(uniforms.u_fly_speed, parameters.fly_speed.value);
-                gl.uniform1f(uniforms.u_contrast, parameters.contrast.value);
-                gl.uniform1f(uniforms.u_kaleidoscope_segments, parameters.kaleidoscope_segments.value);
-                gl.uniform1f(uniforms.u_layer_count, parameters.layer_count.value);
-                gl.uniform1f(uniforms.u_truchet_radius, parameters.truchet_radius.value);
-                gl.uniform1f(uniforms.u_center_fill_radius, parameters.center_fill_radius.value);
-                gl.uniform1f(uniforms.u_rotation_speed, parameters.rotation_speed.value);
-                gl.uniform1f(uniforms.u_plane_rotation_speed, parameters.plane_rotation_speed.value);
-                gl.uniform1f(uniforms.u_zoom_level, parameters.zoom_level.value);
-                gl.uniform1f(uniforms.u_color_intensity, parameters.color_intensity.value);
-                gl.uniform1f(uniforms.u_camera_tilt_x, parameters.camera_tilt_x.value);
-                gl.uniform1f(uniforms.u_camera_tilt_y, parameters.camera_tilt_y.value);
-                gl.uniform1f(uniforms.u_camera_roll, parameters.camera_roll.value);
-                gl.uniform1f(uniforms.u_path_stability, parameters.path_stability.value);
-                gl.uniform1f(uniforms.u_path_scale, parameters.path_scale.value);
-                gl.uniform1f(uniforms.u_color_speed, parameters.color_speed.value);
+                
+                // Apply audio modifiers to parameters
+                gl.uniform1f(uniforms.u_fly_speed, parameters.fly_speed.value * audioModifiers.fly_speed);
+                gl.uniform1f(uniforms.u_contrast, parameters.contrast.value * audioModifiers.contrast);
+                gl.uniform1f(uniforms.u_kaleidoscope_segments, parameters.kaleidoscope_segments.value * audioModifiers.kaleidoscope_segments);
+                gl.uniform1f(uniforms.u_layer_count, Math.max(1, Math.min(10, parameters.layer_count.value * audioModifiers.layer_count)));
+                gl.uniform1f(uniforms.u_truchet_radius, parameters.truchet_radius.value * audioModifiers.truchet_radius);
+                gl.uniform1f(uniforms.u_center_fill_radius, parameters.center_fill_radius.value * audioModifiers.center_fill_radius);
+                gl.uniform1f(uniforms.u_rotation_speed, parameters.rotation_speed.value * audioModifiers.rotation_speed);
+                gl.uniform1f(uniforms.u_plane_rotation_speed, parameters.plane_rotation_speed.value * audioModifiers.plane_rotation_speed);
+                gl.uniform1f(uniforms.u_zoom_level, parameters.zoom_level.value * audioModifiers.zoom_level);
+                gl.uniform1f(uniforms.u_color_intensity, parameters.color_intensity.value * audioModifiers.color_intensity);
+                gl.uniform1f(uniforms.u_camera_tilt_x, parameters.camera_tilt_x.value * audioModifiers.camera_tilt_x);
+                gl.uniform1f(uniforms.u_camera_tilt_y, parameters.camera_tilt_y.value * audioModifiers.camera_tilt_y);
+                gl.uniform1f(uniforms.u_camera_roll, parameters.camera_roll.value * audioModifiers.camera_roll);
+                gl.uniform1f(uniforms.u_path_stability, parameters.path_stability.value * audioModifiers.path_stability);
+                gl.uniform1f(uniforms.u_path_scale, parameters.path_scale.value * audioModifiers.path_scale);
+                gl.uniform1f(uniforms.u_color_speed, parameters.color_speed.value * audioModifiers.color_speed);
                 gl.uniform1f(uniforms.u_use_color_palette, useColorPalette ? 1.0 : 0.0);
                 gl.uniform1f(uniforms.u_invert_colors, invertColors ? 1.0 : 0.0);
                 
