@@ -1,4 +1,11 @@
 <!DOCTYPE html>
+<!--
+Kaldao Fractal Visualizer v0.2.2
+Interactive WebGL fractal visualizer with real-time parameter control
+
+@agoramachina 2025
+MIT License
+-->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -104,7 +111,7 @@
                 Press ESC to close • Current parameter highlighted in green
             </div>
             <div style="text-align: center; margin-top: 10px; opacity: 0.5; font-size: 10px; color: #888;">
-                Kaldao v0.2.1
+                Kaldao v0.2.2
             </div>
         </div>
         
@@ -117,7 +124,7 @@
                 Tap to close • Swipe ←→ for parameters • Swipe ↕ to adjust • Hold 2s to reset all
             </div>
             <div style="text-align: center; margin-top: 8px; opacity: 0.5; font-size: 9px; color: #888;">
-                Kaldao v0.2.1
+                Kaldao v0.2.2
             </div>
         </div>
     </div>
@@ -141,6 +148,8 @@
         let longPressTimeout = null;
         let longPressTriggered = false;
         let initialParameterValue = 0; // Store initial value for fader behavior
+        let hasMoved = false; // Track if finger has moved during touch
+        let gestureType = null; // Track what type of gesture is happening
         
         // Shake detection variables
         let lastShakeTime = 0;
@@ -914,14 +923,16 @@
                 touchStartTime = Date.now();
                 isSwipeInProgress = true;
                 longPressTriggered = false;
+                hasMoved = false;
+                gestureType = null;
                 
                 // Store initial parameter value for fader behavior
                 const paramKey = parameterKeys[currentParameterIndex];
                 initialParameterValue = parameters[paramKey].value;
                 
-                // Start long press timer for reset all
+                // Start long press timer for reset all - only triggers if no movement
                 longPressTimeout = setTimeout(() => {
-                    if (isSwipeInProgress && !longPressTriggered) {
+                    if (isSwipeInProgress && !longPressTriggered && !hasMoved) {
                         longPressTriggered = true;
                         
                         // Save state before reset
@@ -971,35 +982,57 @@
             const deltaY = touch.clientY - touchStartY;
             const deltaTime = Date.now() - touchStartTime;
             
-            // Cancel long press if moved too much
-            if ((Math.abs(deltaX) > 30 || Math.abs(deltaY) > 30) && longPressTimeout && !longPressTriggered) {
-                clearTimeout(longPressTimeout);
-                longPressTimeout = null;
+            // Mark that finger has moved if movement exceeds threshold
+            if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
+                hasMoved = true;
+                
+                // Cancel long press immediately once movement is detected
+                if (longPressTimeout && !longPressTriggered) {
+                    clearTimeout(longPressTimeout);
+                    longPressTimeout = null;
+                }
             }
             
-            // Only process gestures if not in long press mode
-            if (!longPressTriggered && deltaTime > 100) { // Small delay to avoid accidental gestures
-                // Determine primary direction
-                if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
-                    // Horizontal swipe - change parameter (discrete action)
+            // Only process gestures if not in long press mode and finger has moved
+            if (!longPressTriggered && hasMoved && deltaTime > 50) {
+                // Determine gesture type if not already set
+                if (!gestureType) {
+                    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 30) {
+                        gestureType = 'horizontal';
+                    } else if (Math.abs(deltaY) > 15) {
+                        gestureType = 'vertical';
+                    }
+                }
+                
+                // Handle horizontal swipe - parameter switching
+                if (gestureType === 'horizontal') {
                     if (deltaX > 0) {
                         switchParameter(1); // Right swipe - next parameter
                     } else {
                         switchParameter(-1); // Left swipe - previous parameter
                     }
-                    isSwipeInProgress = false; // End gesture after parameter switch
-                } else if (Math.abs(deltaY) > 5) {
-                    // Vertical movement - continuous fader adjustment
+                    // Reset for immediate next gesture
+                    isSwipeInProgress = false;
+                    gestureType = null;
+                    hasMoved = false;
+                    
+                    // Update initial value for new parameter
+                    const paramKey = parameterKeys[currentParameterIndex];
+                    initialParameterValue = parameters[paramKey].value;
+                }
+                
+                // Handle vertical movement - fader adjustment
+                else if (gestureType === 'vertical') {
                     const paramKey = parameterKeys[currentParameterIndex];
                     const param = parameters[paramKey];
                     
-                    // Calculate smooth fader adjustment based on movement from initial position
-                    const sensitivity = 200.0; // Higher number = less sensitive
+                    // Less sensitive fader - higher number = less sensitive
+                    const sensitivity = 300.0; // Increased from 200 for less sensitivity
                     const movementDelta = touch.clientY - touchStartY;
                     const range = param.max - param.min;
                     const deltaValue = (-movementDelta / sensitivity) * range;
                     
-                    // Calculate new value relative to initial parameter value
+                    // Calculate new value relative to initial parameter value when gesture started
                     let newValue = initialParameterValue + deltaValue;
                     
                     // Clamp to parameter bounds
@@ -1015,11 +1048,9 @@
                         newValue = Math.round(newValue / param.step) * param.step;
                     }
                     
-                    // Only update if value changed to avoid unnecessary updates
-                    if (Math.abs(param.value - newValue) > 0.001) {
-                        param.value = newValue;
-                        updateDisplay();
-                    }
+                    // Update parameter value
+                    param.value = newValue;
+                    updateDisplay();
                 }
             }
         }
@@ -1040,17 +1071,24 @@
             
             if (isSwipeInProgress && !longPressTriggered) {
                 const deltaTime = Date.now() - touchStartTime;
-                const deltaX = Math.abs(e.changedTouches[0].clientX - touchStartX);
-                const deltaY = Math.abs(e.changedTouches[0].clientY - touchStartY);
                 
                 // If it was a short tap without much movement, toggle menu
-                if (deltaTime < 300 && deltaX < 20 && deltaY < 20) {
+                if (deltaTime < 300 && !hasMoved) {
                     toggleMenu();
+                }
+                // For vertical fader gestures, update the initial value for next touch
+                else if (gestureType === 'vertical') {
+                    // Update the initial value to current value for seamless continuation
+                    const paramKey = parameterKeys[currentParameterIndex];
+                    initialParameterValue = parameters[paramKey].value;
                 }
             }
             
+            // Reset all touch state for next gesture
             isSwipeInProgress = false;
             longPressTriggered = false;
+            hasMoved = false;
+            gestureType = null;
         }
         
         function handleDeviceMotion(e) {
