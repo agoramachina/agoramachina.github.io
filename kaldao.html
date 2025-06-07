@@ -1,12 +1,19 @@
 <!DOCTYPE html>
+<!--
+Kaldao Fractal Visualizer v0.2.3
+Interactive WebGL fractal visualizer with real-time parameter control
+
+@agoramachina 2025
+MIT License
+-->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Kaldao Fractal Visualizer - Complete</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #000; color: #fff; font-family: 'Courier New', monospace; overflow: hidden; }
+        body { background: #000; color: #fff; font-family: 'Courier New', monospace; overflow: hidden; touch-action: manipulation; }
         #canvas { display: block; }
         .ui { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.8); padding: 15px; border-radius: 8px; font-size: 14px; max-width: 400px; transition: opacity 0.3s ease; }
         .controls { position: absolute; top: 20px; right: 20px; background: rgba(0,0,0,0.8); padding: 15px; border-radius: 8px; font-size: 12px; transition: opacity 0.3s ease; }
@@ -17,6 +24,20 @@
         .hidden { opacity: 0; pointer-events: none; }
         .error { color: #ff4444; }
         .success { color: #44ff44; }
+        
+        /* Mobile-specific styles */
+        @media (max-width: 768px) {
+            .ui { top: 10px; left: 10px; padding: 10px; font-size: 12px; max-width: calc(60vw - 20px); }
+            .controls { display: none; } /* Hide keyboard controls on mobile */
+            .menu { padding: 15px; max-width: 90vw; }
+            .menu-desktop { display: none; } /* Hide desktop menu layout on mobile */
+            .menu-mobile { display: block; } /* Show mobile menu layout */
+        }
+        
+        @media (min-width: 769px) {
+            .menu-desktop { display: block; }
+            .menu-mobile { display: none; }
+        }
     </style>
 </head>
 <body>
@@ -50,42 +71,61 @@
 
     <!-- All Parameters Display -->
     <div class="menu hidden" id="menu">
-        <div style="display: flex; gap: 20px; width: 100%;">
-            <div style="flex: 1; min-width: 300px;">
-                <h2 style="color: #4CAF50; margin-bottom: 15px; font-size: 18px;">📊 All Parameters</h2>
-                <div id="allParametersList" style="font-family: monospace; font-size: 12px; line-height: 1.3;"></div>
-            </div>
-            
-            <div style="flex: 1; min-width: 300px;">
-                <h2 style="color: #FFC107; margin-bottom: 15px; font-size: 18px;">🎨 Color & Audio</h2>
-                
-                <div style="margin-bottom: 15px;">
-                    <h3 style="color: #FFC107; margin-bottom: 8px; font-size: 14px;">Color Palettes</h3>
-                    <div id="allPalettesList" style="font-family: monospace; font-size: 12px; line-height: 1.3;"></div>
+        <!-- Desktop Menu Layout -->
+        <div class="menu-desktop">
+            <div style="display: flex; gap: 20px; width: 100%;">
+                <div style="flex: 1; min-width: 300px;">
+                    <h2 style="color: #4CAF50; margin-bottom: 15px; font-size: 18px;">📊 All Parameters</h2>
+                    <div id="allParametersList" style="font-family: monospace; font-size: 12px; line-height: 1.3;"></div>
                 </div>
                 
-                <div style="margin-bottom: 15px;">
-                    <h3 style="color: #FFC107; margin-bottom: 8px; font-size: 14px;">Audio Status</h3>
-                    <div id="allAudioStatus" style="font-family: monospace; font-size: 12px; line-height: 1.3;"></div>
-                </div>
-                
-                <div>
-                    <h3 style="color: #FFC107; margin-bottom: 8px; font-size: 14px;">Quick Controls</h3>
-                    <div style="font-size: 11px; line-height: 1.2;">
-                        <strong>Navigation:</strong> ↑/↓ switch • ←/→ adjust<br>
-                        <strong>Randomize:</strong> C colors • . parameters<br>
-                        <strong>Reset:</strong> R current • Shift+R all<br>
-                        <strong>Audio:</strong> A upload • M microphone<br>
-                        <strong>Files:</strong> S save • L load<br>
-                        <strong>Undo:</strong> Ctrl+Z/Y • Space pause<br>
-                        <strong>Colors:</strong> I invert • Shift+C reset<br>
+                <div style="flex: 1; min-width: 300px;">
+                    <h2 style="color: #FFC107; margin-bottom: 15px; font-size: 18px;">🎨 Color & Audio</h2>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <h3 style="color: #FFC107; margin-bottom: 8px; font-size: 14px;">Color Palettes</h3>
+                        <div id="allPalettesList" style="font-family: monospace; font-size: 12px; line-height: 1.3;"></div>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <h3 style="color: #FFC107; margin-bottom: 8px; font-size: 14px;">Audio Status</h3>
+                        <div id="allAudioStatus" style="font-family: monospace; font-size: 12px; line-height: 1.3;"></div>
+                    </div>
+                    
+                    <div>
+                        <h3 style="color: #FFC107; margin-bottom: 8px; font-size: 14px;">Quick Controls</h3>
+                        <div style="font-size: 11px; line-height: 1.2;">
+                            <strong>Navigation:</strong> ↑/↓ switch • ←/→ adjust<br>
+                            <strong>Randomize:</strong> C colors • . parameters<br>
+                            <strong>Reset:</strong> R current • Shift+R all<br>
+                            <strong>Audio:</strong> A upload • M microphone<br>
+                            <strong>Files:</strong> S save • L load<br>
+                            <strong>Undo:</strong> Ctrl+Z/Y • Space pause<br>
+                            <strong>Colors:</strong> I invert • Shift+C reset<br>
+                        </div>
                     </div>
                 </div>
             </div>
+            
+            <div style="text-align: center; margin-top: 15px; opacity: 0.7; font-size: 12px;">
+                Press ESC to close • Current parameter highlighted in green
+            </div>
+            <div style="text-align: center; margin-top: 10px; opacity: 0.5; font-size: 10px; color: #888;">
+                Kaldao v0.2.3
+            </div>
         </div>
         
-        <div style="text-align: center; margin-top: 15px; opacity: 0.7; font-size: 12px;">
-            Press ESC to close • Current parameter highlighted in green
+        <!-- Mobile Menu Layout -->
+        <div class="menu-mobile">
+            <h2 style="color: #4CAF50; margin-bottom: 15px; font-size: 16px;">📊 All Parameters</h2>
+            <div id="allParametersListMobile" style="font-family: monospace; font-size: 11px; line-height: 1.3;"></div>
+            
+            <div style="text-align: center; margin-top: 15px; opacity: 0.7; font-size: 10px;">
+                Tap to close • Swipe ←→ for parameters • Swipe ↕ to adjust • Hold 2s to reset all
+            </div>
+            <div style="text-align: center; margin-top: 8px; opacity: 0.5; font-size: 9px; color: #888;">
+                Kaldao v0.2.3
+            </div>
         </div>
     </div>
 
@@ -98,6 +138,25 @@
         let useColorPalette = false;
         let invertColors = false;
         let menuVisible = false;
+        
+        // Mobile touch variables
+        let isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchStartTime = 0;
+        let isSwipeInProgress = false;
+        let longPressTimeout = null;
+        let longPressTriggered = false;
+        let initialParameterValue = 0; // Store initial value for fader behavior
+        let hasMoved = false; // Track if finger has moved during touch
+        let gestureType = null; // Track what type of gesture is happening
+        let userIsCurrentlyTouching = false; // Track if user is actively touching screen
+        
+        // Shake detection variables
+        let lastShakeTime = 0;
+        let shakeThreshold = 25; // Increased from 15 to require harder shake
+        let lastAcceleration = { x: 0, y: 0, z: 0 };
+        let shakeTimeout = null;
         
         // Controls menu auto-fade system
         let controlsVisible = true;
@@ -148,7 +207,7 @@
         const parameters = {
             fly_speed: { value: 0.25, min: -3.0, max: 3.0, step: 0.1, name: "Fly Speed" },
             contrast: { value: 1.0, min: 0.1, max: 5.0, step: 0.1, name: "Contrast" },
-            kaleidoscope_segments: { value: 10.0, min: 4.0, max: 80.0, step: 2.0, name: "Kaleidoscope Segments" },
+            kaleidoscope_segments: { value: 10.0, min: 4.0, max: 200.0, step: 2.0, name: "Kaleidoscope Segments" },
             truchet_radius: { value: 0.35, min: -1.0, max: 1.0, step: 0.01, name: "Truchet Radius" },
             center_fill_radius: { value: 0.0, min: -2.0, max: 2.0, step: 0.01, name: "Center Fill Radius" },
             layer_count: { value: 6, min: 1, max: 10, step: 1, name: "Layer Count" },
@@ -649,9 +708,19 @@
         // Controls auto-fade functions
         function showControls() {
             const controls = document.getElementById('controls');
-            if (controls && !menuVisible) {
-                controls.classList.remove('hidden');
-                ui.classList.remove('hidden');
+            const ui = document.getElementById('ui');
+            
+            if (!menuVisible) {
+                // On mobile, only show UI (not controls since they're hidden via CSS)
+                if (ui) {
+                    ui.classList.remove('hidden');
+                }
+                
+                // On desktop, show both controls and UI
+                if (controls && !isMobile) {
+                    controls.classList.remove('hidden');
+                }
+                
                 controlsVisible = true;
                 
                 // Clear existing timeout
@@ -668,10 +737,20 @@
         
         function hideControls() {
             const controls = document.getElementById('controls');
-            if (controls && !menuVisible) {
-                controls.classList.add('hidden');
+            const ui = document.getElementById('ui');
+            
+            if (!menuVisible) {
+                // Hide UI on both mobile and desktop
+                if (ui) {
+                    ui.classList.add('hidden');
+                }
+                
+                // Hide controls on desktop (already hidden on mobile via CSS)
+                if (controls && !isMobile) {
+                    controls.classList.add('hidden');
+                }
+                
                 controlsVisible = false;
-                ui.classList.add('hidden');
             }
         }
         
@@ -680,8 +759,44 @@
                 showControls();
             }
         }
+        
+        // Mobile-specific function to handle UI hiding
+        function resetMobileUITimer() {
+            if (isMobile && !menuVisible) {
+                const ui = document.getElementById('ui');
+                if (ui) {
+                    ui.classList.remove('hidden');
+                    
+                    // Clear existing timeout
+                    if (controlsFadeTimeout) {
+                        clearTimeout(controlsFadeTimeout);
+                    }
+                    
+                    // Only set timeout if user is not currently touching screen
+                    if (!userIsCurrentlyTouching) {
+                        controlsFadeTimeout = setTimeout(() => {
+                            if (!menuVisible && !userIsCurrentlyTouching) {
+                                ui.classList.add('hidden');
+                                // Clear status message when UI fades out
+                                clearStatusMessage();
+                            }
+                        }, CONTROLS_FADE_DELAY);
+                    }
+                }
+            }
+        }
+        
+        // Function to clear status message
+        function clearStatusMessage() {
+            const statusDiv = document.getElementById('status');
+            if (statusDiv) {
+                statusDiv.textContent = '';
+                statusDiv.className = '';
+            }
+        }
 
         function setupControls() {
+            // Keyboard controls for desktop
             document.addEventListener('keydown', (e) => {
                 try {
                     // Reset controls fade timer on any keypress
@@ -773,6 +888,11 @@
                 }
             });
 
+            // Mobile touch controls
+            if (isMobile) {
+                setupMobileControls();
+            }
+
             window.addEventListener('resize', () => {
                 if (canvas && gl) {
                     canvas.width = window.innerWidth;
@@ -780,6 +900,254 @@
                     gl.viewport(0, 0, canvas.width, canvas.height);
                 }
             });
+        }
+        
+        function setupMobileControls() {
+            // Touch events for gestures - attach to document for broader coverage
+            document.addEventListener('touchstart', handleTouchStart, { passive: false });
+            document.addEventListener('touchmove', handleTouchMove, { passive: false });
+            document.addEventListener('touchend', handleTouchEnd, { passive: false });
+            
+            // Also attach to canvas as backup
+            canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+            canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+            canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+            
+            // Device motion for shake detection
+            if (window.DeviceMotionEvent) {
+                window.addEventListener('devicemotion', handleDeviceMotion);
+            }
+        }
+        
+        function handleTouchStart(e) {
+            // Don't prevent default on menu elements
+            if (e.target.closest('.menu')) {
+                return;
+            }
+            
+            e.preventDefault();
+            
+            // Mark that user is currently touching
+            userIsCurrentlyTouching = true;
+            
+            // Reset controls fade timer on touch
+            resetMobileUITimer();
+            
+            if (e.touches.length === 1) {
+                const touch = e.touches[0];
+                touchStartX = touch.clientX;
+                touchStartY = touch.clientY;
+                touchStartTime = Date.now();
+                isSwipeInProgress = true;
+                longPressTriggered = false;
+                hasMoved = false;
+                gestureType = null;
+                
+                // Store initial parameter value for fader behavior
+                const paramKey = parameterKeys[currentParameterIndex];
+                initialParameterValue = parameters[paramKey].value;
+                
+                // Start long press timer for reset all - only triggers if no movement
+                longPressTimeout = setTimeout(() => {
+                    if (isSwipeInProgress && !longPressTriggered && !hasMoved) {
+                        longPressTriggered = true;
+                        
+                        // Save state before reset
+                        saveStateForUndo();
+                        
+                        // Reset all parameters to default values
+                        const defaults = {
+                            fly_speed: 0.25, contrast: 1.0, kaleidoscope_segments: 10.0,
+                            truchet_radius: 0.35, center_fill_radius: 0.0, layer_count: 6,
+                            rotation_speed: 0.025, zoom_level: 0.3, color_intensity: 1.0,
+                            plane_rotation_speed: 0.5, camera_tilt_x: 0.0, camera_tilt_y: 0.0,
+                            camera_roll: 0.0, path_stability: 1.0, path_scale: 1.0, color_speed: 0.5
+                        };
+                        
+                        Object.keys(parameters).forEach(key => {
+                            if (defaults[key] !== undefined) {
+                                parameters[key].value = defaults[key];
+                            }
+                        });
+                        
+                        // Reset color settings
+                        currentPaletteIndex = 0;
+                        useColorPalette = false;
+                        invertColors = false;
+                        
+                        updateDisplay();
+                        updateMenuDisplay();
+                        updateStatus('🔄 Long press detected - All parameters reset!', 'success');
+                        isSwipeInProgress = false;
+                    }
+                }, 2000); // 2 seconds
+            }
+        }
+        
+        function handleTouchMove(e) {
+            // Don't prevent default on menu elements
+            if (e.target.closest('.menu')) {
+                return;
+            }
+            
+            e.preventDefault();
+            
+            if (!isSwipeInProgress || e.touches.length !== 1) return;
+            
+            const touch = e.touches[0];
+            const deltaX = touch.clientX - touchStartX;
+            const deltaY = touch.clientY - touchStartY;
+            const deltaTime = Date.now() - touchStartTime;
+            
+            // Mark that finger has moved if movement exceeds threshold
+            if (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10) {
+                hasMoved = true;
+                
+                // Cancel long press immediately once movement is detected
+                if (longPressTimeout && !longPressTriggered) {
+                    clearTimeout(longPressTimeout);
+                    longPressTimeout = null;
+                }
+            }
+            
+            // Only process gestures if not in long press mode and finger has moved
+            if (!longPressTriggered && hasMoved && deltaTime > 50) {
+                // Determine gesture type if not already set
+                if (!gestureType) {
+                    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 30) {
+                        gestureType = 'horizontal';
+                    } else if (Math.abs(deltaY) > 15) {
+                        gestureType = 'vertical';
+                    }
+                }
+                
+                // Handle horizontal swipe - parameter switching
+                if (gestureType === 'horizontal') {
+                    if (deltaX > 0) {
+                        switchParameter(1); // Right swipe - next parameter
+                    } else {
+                        switchParameter(-1); // Left swipe - previous parameter
+                    }
+                    // Reset for immediate next gesture
+                    isSwipeInProgress = false;
+                    gestureType = null;
+                    hasMoved = false;
+                    
+                    // Update initial value for new parameter
+                    const paramKey = parameterKeys[currentParameterIndex];
+                    initialParameterValue = parameters[paramKey].value;
+                }
+                
+                // Handle vertical movement - fader adjustment
+                else if (gestureType === 'vertical') {
+                    const paramKey = parameterKeys[currentParameterIndex];
+                    const param = parameters[paramKey];
+                    
+                    // Less sensitive fader - higher number = less sensitive
+                    const sensitivity = 300.0; // Increased from 200 for less sensitivity
+                    const movementDelta = touch.clientY - touchStartY;
+                    const range = param.max - param.min;
+                    const deltaValue = (-movementDelta / sensitivity) * range;
+                    
+                    // Calculate new value relative to initial parameter value when gesture started
+                    let newValue = initialParameterValue + deltaValue;
+                    
+                    // Clamp to parameter bounds
+                    newValue = Math.max(param.min, Math.min(param.max, newValue));
+                    
+                    // Apply step rounding for discrete parameters
+                    if (paramKey === 'kaleidoscope_segments' || paramKey === 'layer_count') {
+                        newValue = Math.round(newValue);
+                        if (paramKey === 'kaleidoscope_segments') {
+                            newValue = Math.round(newValue / 2) * 2; // Ensure even numbers
+                        }
+                    } else {
+                        newValue = Math.round(newValue / param.step) * param.step;
+                    }
+                    
+                    // Update parameter value
+                    param.value = newValue;
+                    updateDisplay();
+                }
+            }
+        }
+        
+        function handleTouchEnd(e) {
+            // Don't prevent default on menu elements
+            if (e.target.closest('.menu')) {
+                return;
+            }
+            
+            e.preventDefault();
+            
+            // Clear long press timeout
+            if (longPressTimeout) {
+                clearTimeout(longPressTimeout);
+                longPressTimeout = null;
+            }
+            
+            if (isSwipeInProgress && !longPressTriggered) {
+                const deltaTime = Date.now() - touchStartTime;
+                
+                // If it was a short tap without much movement, toggle menu
+                if (deltaTime < 300 && !hasMoved) {
+                    toggleMenu();
+                }
+                // For vertical fader gestures, update the initial value for next touch
+                else if (gestureType === 'vertical') {
+                    // Update the initial value to current value for seamless continuation
+                    const paramKey = parameterKeys[currentParameterIndex];
+                    initialParameterValue = parameters[paramKey].value;
+                }
+            }
+            
+            // Mark that user is no longer touching
+            userIsCurrentlyTouching = false;
+            
+            // Reset all touch state for next gesture
+            isSwipeInProgress = false;
+            longPressTriggered = false;
+            hasMoved = false;
+            gestureType = null;
+            
+            // Start fade timer now that user is not touching
+            resetMobileUITimer();
+        }
+        
+        function handleDeviceMotion(e) {
+            if (!e.accelerationIncludingGravity) return;
+            
+            const acceleration = e.accelerationIncludingGravity;
+            const currentTime = Date.now();
+            
+            // Calculate acceleration delta
+            const deltaX = Math.abs(acceleration.x - lastAcceleration.x);
+            const deltaY = Math.abs(acceleration.y - lastAcceleration.y);
+            const deltaZ = Math.abs(acceleration.z - lastAcceleration.z);
+            
+            const totalDelta = deltaX + deltaY + deltaZ;
+            
+            // Detect shake
+            if (totalDelta > shakeThreshold && currentTime - lastShakeTime > 1000) {
+                lastShakeTime = currentTime;
+                
+                // Clear any existing timeout
+                if (shakeTimeout) {
+                    clearTimeout(shakeTimeout);
+                }
+                
+                // Debounce shake detection
+                shakeTimeout = setTimeout(() => {
+                    randomizeParameters();
+                    updateStatus('🎲 Shake detected - Parameters randomized!', 'success');
+                }, 100);
+            }
+            
+            lastAcceleration = {
+                x: acceleration.x,
+                y: acceleration.y,
+                z: acceleration.z
+            };
         }
 
         function updateStatus(message, type = 'info') {
@@ -1093,9 +1461,8 @@
         function updateMenuDisplay() {
             if (!menuVisible) return;
             
-            // Update ALL parameters list with organized categories
-            const allParamsList = document.getElementById('allParametersList');
-            if (allParamsList) {
+            // Generate parameters HTML
+            function generateParametersHTML() {
                 let paramsHTML = '';
                 
                 // Movement & Animation
@@ -1150,7 +1517,19 @@
                     paramsHTML += `<div style="${style}">${param.name}: ${param.value.toFixed(3)}</div>`;
                 });
                 
-                allParamsList.innerHTML = paramsHTML;
+                return paramsHTML;
+            }
+            
+            // Update desktop parameters list
+            const allParamsList = document.getElementById('allParametersList');
+            if (allParamsList) {
+                allParamsList.innerHTML = generateParametersHTML();
+            }
+            
+            // Update mobile parameters list
+            const allParamsListMobile = document.getElementById('allParametersListMobile');
+            if (allParamsListMobile) {
+                allParamsListMobile.innerHTML = generateParametersHTML();
             }
             
             // Update palettes list
