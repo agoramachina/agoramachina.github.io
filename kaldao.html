@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--
-Kaldao Fractal Visualizer v0.2.4
+Kaldao Fractal Visualizer v0.2.5
 Interactive WebGL fractal visualizer with real-time parameter control
 
 @agoramachina 2025
@@ -108,10 +108,12 @@ MIT License
             </div>
             
             <div style="text-align: center; margin-top: 15px; opacity: 0.7; font-size: 12px;">
-                Press ESC to close • Current parameter highlighted in green
+                Press ESC to close • Current parameter highlighted in green<br>
+                Menu open: ↑↓ cycle parameters • ←→ adjust values<br>
+                Menu closed: ←→ cycle parameters • ↑↓ adjust values
             </div>
             <div style="text-align: center; margin-top: 10px; opacity: 0.5; font-size: 10px; color: #888;">
-                Kaldao v0.2.4
+                Kaldao v0.2.5
             </div>
         </div>
         
@@ -125,7 +127,7 @@ MIT License
                 Tilt device for camera • Pinch to zoom • Shake to randomize
             </div>
             <div style="text-align: center; margin-top: 8px; opacity: 0.5; font-size: 9px; color: #888;">
-                Kaldao v0.2.4
+                Kaldao v0.2.5
             </div>
         </div>
     </div>
@@ -816,19 +818,43 @@ MIT License
                     switch(e.code) {
                         case 'ArrowUp':
                             e.preventDefault();
-                            switchParameter(-1);
+                            if (menuVisible) {
+                                // When menu is open: up/down cycles parameters
+                                switchParameter(-1);
+                            } else {
+                                // When menu is closed: up/down adjusts values
+                                adjustParameter(1);
+                            }
                             break;
                         case 'ArrowDown':
                             e.preventDefault();
-                            switchParameter(1);
+                            if (menuVisible) {
+                                // When menu is open: up/down cycles parameters
+                                switchParameter(1);
+                            } else {
+                                // When menu is closed: up/down adjusts values
+                                adjustParameter(-1);
+                            }
                             break;
                         case 'ArrowLeft':
                             e.preventDefault();
-                            adjustParameter(-1);
+                            if (menuVisible) {
+                                // When menu is open: left/right adjusts values
+                                adjustParameter(-1);
+                            } else {
+                                // When menu is closed: left/right cycles parameters
+                                switchParameter(-1);
+                            }
                             break;
                         case 'ArrowRight':
                             e.preventDefault();
-                            adjustParameter(1);
+                            if (menuVisible) {
+                                // When menu is open: left/right adjusts values
+                                adjustParameter(1);
+                            } else {
+                                // When menu is closed: left/right cycles parameters
+                                switchParameter(1);
+                            }
                             break;
                         case 'Space':
                             e.preventDefault();
@@ -1057,7 +1083,7 @@ MIT License
                 
                 // Calculate zoom change
                 const distanceRatio = currentDistance / initialPinchDistance;
-                const sensitivity = 1.5; // Adjust sensitivity (lower = less sensitive)
+                const sensitivity = 0.8; // Adjust sensitivity (lower = less sensitive)
                 let newZoom = initialZoomValue + (distanceRatio - 1.0) * sensitivity;
                 
                 // Clamp to zoom bounds
@@ -1254,8 +1280,9 @@ MIT License
             const maxTilt = 30; // Maximum tilt angle in degrees
             
             // Map tilt to camera tilt parameters
-            const tiltX = Math.max(-10, Math.min(10, (relativeBeta / maxTilt) * 10 * tiltSensitivity));
-            const tiltY = Math.max(-10, Math.min(10, (relativeGamma / maxTilt) * 10 * tiltSensitivity));
+            // X should be controlled by left/right tilt (gamma), Y by forward/back tilt (beta)
+            const tiltX = Math.max(-10, Math.min(10, (relativeGamma / maxTilt) * 10 * tiltSensitivity));
+            const tiltY = Math.max(-10, Math.min(10, (relativeBeta / maxTilt) * 10 * tiltSensitivity));
             
             // Update camera tilt parameters
             parameters.camera_tilt_x.value = tiltX;
