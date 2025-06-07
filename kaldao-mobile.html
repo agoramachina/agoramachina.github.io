@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--
-Kaldao Fractal Visualizer v0.2.3
+Kaldao Fractal Visualizer v0.2.4
 Interactive WebGL fractal visualizer with real-time parameter control
 
 @agoramachina 2025
@@ -111,7 +111,7 @@ MIT License
                 Press ESC to close • Current parameter highlighted in green
             </div>
             <div style="text-align: center; margin-top: 10px; opacity: 0.5; font-size: 10px; color: #888;">
-                Kaldao v0.2.3
+                Kaldao v0.2.4
             </div>
         </div>
         
@@ -121,10 +121,11 @@ MIT License
             <div id="allParametersListMobile" style="font-family: monospace; font-size: 11px; line-height: 1.3;"></div>
             
             <div style="text-align: center; margin-top: 15px; opacity: 0.7; font-size: 10px;">
-                Tap to close • Swipe ←→ for parameters • Swipe ↕ to adjust • Hold 2s to reset all
+                Tap to close • Swipe ←→ for parameters • Swipe ↕ to adjust • Hold 2s to reset all<br>
+                Tilt device for camera • Pinch to zoom • Shake to randomize
             </div>
             <div style="text-align: center; margin-top: 8px; opacity: 0.5; font-size: 9px; color: #888;">
-                Kaldao v0.2.3
+                Kaldao v0.2.4
             </div>
         </div>
     </div>
@@ -151,6 +152,16 @@ MIT License
         let hasMoved = false; // Track if finger has moved during touch
         let gestureType = null; // Track what type of gesture is happening
         let userIsCurrentlyTouching = false; // Track if user is actively touching screen
+        
+        // Device orientation variables
+        let deviceTiltEnabled = false;
+        let baseOrientation = { beta: 0, gamma: 0 }; // Store neutral position
+        let orientationCalibrated = false;
+        
+        // Pinch gesture variables
+        let isPinching = false;
+        let initialPinchDistance = 0;
+        let initialZoomValue = 0;
         
         // Shake detection variables
         let lastShakeTime = 0;
@@ -917,6 +928,27 @@ MIT License
             if (window.DeviceMotionEvent) {
                 window.addEventListener('devicemotion', handleDeviceMotion);
             }
+            
+            // Device orientation for tilt control
+            if (window.DeviceOrientationEvent) {
+                // Request permission for iOS 13+
+                if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                    DeviceOrientationEvent.requestPermission()
+                        .then(response => {
+                            if (response === 'granted') {
+                                window.addEventListener('deviceorientation', handleDeviceOrientation);
+                                deviceTiltEnabled = true;
+                                updateStatus('📱 Device tilt enabled for camera control', 'success');
+                            }
+                        })
+                        .catch(console.error);
+                } else {
+                    // For Android and older iOS
+                    window.addEventListener('deviceorientation', handleDeviceOrientation);
+                    deviceTiltEnabled = true;
+                    updateStatus('📱 Device tilt enabled for camera control', 'success');
+                }
+            }
         }
         
         function handleTouchStart(e) {
@@ -942,6 +974,7 @@ MIT License
                 longPressTriggered = false;
                 hasMoved = false;
                 gestureType = null;
+                isPinching = false;
                 
                 // Store initial parameter value for fader behavior
                 const paramKey = parameterKeys[currentParameterIndex];
@@ -981,6 +1014,27 @@ MIT License
                         isSwipeInProgress = false;
                     }
                 }, 2000); // 2 seconds
+            } else if (e.touches.length === 2) {
+                // Pinch gesture start
+                isPinching = true;
+                isSwipeInProgress = false; // Cancel any ongoing swipe
+                
+                // Clear long press timeout
+                if (longPressTimeout) {
+                    clearTimeout(longPressTimeout);
+                    longPressTimeout = null;
+                }
+                
+                // Calculate initial distance between fingers
+                const touch1 = e.touches[0];
+                const touch2 = e.touches[1];
+                initialPinchDistance = Math.sqrt(
+                    Math.pow(touch2.clientX - touch1.clientX, 2) + 
+                    Math.pow(touch2.clientY - touch1.clientY, 2)
+                );
+                
+                // Store initial zoom value
+                initialZoomValue = parameters.zoom_level.value;
             }
         }
         
@@ -992,7 +1046,30 @@ MIT License
             
             e.preventDefault();
             
-            if (!isSwipeInProgress || e.touches.length !== 1) return;
+            // Handle pinch gesture
+            if (isPinching && e.touches.length === 2) {
+                const touch1 = e.touches[0];
+                const touch2 = e.touches[1];
+                const currentDistance = Math.sqrt(
+                    Math.pow(touch2.clientX - touch1.clientX, 2) + 
+                    Math.pow(touch2.clientY - touch1.clientY, 2)
+                );
+                
+                // Calculate zoom change
+                const distanceRatio = currentDistance / initialPinchDistance;
+                const sensitivity = 1.5; // Adjust sensitivity (lower = less sensitive)
+                let newZoom = initialZoomValue + (distanceRatio - 1.0) * sensitivity;
+                
+                // Clamp to zoom bounds
+                newZoom = Math.max(parameters.zoom_level.min, Math.min(parameters.zoom_level.max, newZoom));
+                newZoom = Math.round(newZoom / parameters.zoom_level.step) * parameters.zoom_level.step;
+                
+                parameters.zoom_level.value = newZoom;
+                updateDisplay();
+                return;
+            }
+            
+            if (!isSwipeInProgress || e.touches.length !== 1 || isPinching) return;
             
             const touch = e.touches[0];
             const deltaX = touch.clientX - touchStartX;
@@ -1109,6 +1186,7 @@ MIT License
             longPressTriggered = false;
             hasMoved = false;
             gestureType = null;
+            isPinching = false;
             
             // Start fade timer now that user is not touching
             resetMobileUITimer();
@@ -1148,6 +1226,53 @@ MIT License
                 y: acceleration.y,
                 z: acceleration.z
             };
+        }
+        
+        function handleDeviceOrientation(e) {
+            if (!deviceTiltEnabled) return;
+            
+            // Get orientation values (beta = front-to-back tilt, gamma = left-to-right tilt)
+            const beta = e.beta;   // Front-to-back tilt (-180 to 180)
+            const gamma = e.gamma; // Left-to-right tilt (-90 to 90)
+            
+            if (beta === null || gamma === null) return;
+            
+            // Calibrate on first reading or when user manually calibrates
+            if (!orientationCalibrated) {
+                baseOrientation.beta = beta;
+                baseOrientation.gamma = gamma;
+                orientationCalibrated = true;
+                return;
+            }
+            
+            // Calculate relative tilt from base position
+            let relativeBeta = beta - baseOrientation.beta;
+            let relativeGamma = gamma - baseOrientation.gamma;
+            
+            // Normalize to parameter range
+            const tiltSensitivity = 0.3; // Adjust sensitivity (lower = less sensitive)
+            const maxTilt = 30; // Maximum tilt angle in degrees
+            
+            // Map tilt to camera tilt parameters
+            const tiltX = Math.max(-10, Math.min(10, (relativeBeta / maxTilt) * 10 * tiltSensitivity));
+            const tiltY = Math.max(-10, Math.min(10, (relativeGamma / maxTilt) * 10 * tiltSensitivity));
+            
+            // Update camera tilt parameters
+            parameters.camera_tilt_x.value = tiltX;
+            parameters.camera_tilt_y.value = tiltY;
+            
+            // Update display if menu is visible (don't spam updates)
+            if (menuVisible) {
+                updateDisplay();
+            }
+        }
+        
+        // Function to recalibrate device orientation
+        function calibrateOrientation() {
+            if (deviceTiltEnabled) {
+                orientationCalibrated = false;
+                updateStatus('📱 Device orientation calibrated', 'success');
+            }
         }
 
         function updateStatus(message, type = 'info') {
