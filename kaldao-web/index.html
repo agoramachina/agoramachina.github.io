@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kaldao Fractal Visualizer</title>
+    
+    <!-- CSS Architecture: Layered styling system for dual-mode interface -->
+    <!-- Each CSS file handles a specific aspect of the interface design -->
+    <link rel="stylesheet" href="css/main.css">    <!-- Core layout and foundation styles -->
+    <link rel="stylesheet" href="css/ui.css">      <!-- Artistic interface components -->
+    <link rel="stylesheet" href="css/menu.css">    <!-- Main menu and overlay systems -->
+    
+    <!-- Enhanced meta tags for better web app behavior -->
+    <meta name="description" content="Interactive fractal visualization with real-time mathematical parameter control">
+    <meta name="keywords" content="fractal, visualization, mathematics, kaleidoscope, procedural, WebGL">
+    <meta name="author" content="Kaldao Project">
+    
+    <!-- Performance and rendering hints for optimal mathematical visualization -->
+    <meta name="theme-color" content="#000000">
+    <meta name="color-scheme" content="dark">
+</head>
+<body>
+    <!-- PRIMARY RENDERING SURFACE -->
+    <!-- This canvas serves as the mathematical visualization output for both artistic and debug modes -->
+    <!-- WebGL renders the fractal mathematics here, controlled by either artistic or debug parameters -->
+    <canvas id="canvas" aria-label="Fractal visualization canvas"></canvas>
+    
+    <!-- ARTISTIC INTERFACE LAYER -->
+    <!-- This represents the "friendly face" of the application - the interface most users will interact with -->
+    <!-- It provides intuitive controls for creative expression without exposing mathematical complexity -->
+    <div class="ui" id="ui">
+        <h3>Kaldao Fractal Visualizer</h3>
+        
+        <!-- Status feedback provides immediate context about current operations -->
+        <!-- This becomes especially important in debug mode where users need clear feedback about mathematical changes -->
+        <div id="status" aria-live="polite">Loading...</div>
+        
+        <!-- Current parameter display shows which artistic control is active -->
+        <!-- In normal mode, this displays user-friendly parameter names and values -->
+        <div id="currentParam">Parameter: Loading...</div>
+    </div>
+    
+    <!-- CONTROL REFERENCE PANEL -->
+    <!-- This serves as a "quick reference card" for keyboard shortcuts -->
+    <!-- The controls remain consistent between modes, but their meaning changes contextually -->
+    <div class="controls" id="controls">
+        <strong>CONTROLS</strong><br>
+        <!-- Navigation controls work in both artistic and mathematical modes -->
+        ↑/↓ Switch parameter<br>
+        ←/→ Adjust parameter<br>
+        
+        <!-- Creative controls for artistic expression -->
+        C Randomize colors<br>
+        Shift+C Reset to B&W<br>
+        R Reset current<br>
+        Shift+R Reset all<br>
+        . Randomize parameters<br>
+        I Invert colors<br>
+        
+        <!-- System controls that work in both modes -->
+        Space Pause<br>
+        S Save parameters<br>
+        L Load parameters<br>
+        
+        <!-- Audio reactive controls for live performance -->
+        A Upload audio file<br>
+        M Toggle microphone<br>
+        
+        <!-- Advanced controls for power users -->
+        Ctrl+Z Undo<br>
+        Ctrl+Y Redo<br>
+        ESC Toggle main menu<br>
+        
+        <!-- THE DEBUG MODE GATEWAY -->
+        <!-- This semicolon key is the bridge between artistic and mathematical exploration -->
+        <strong style="color: #FFC107;">; Toggle debug mode</strong><br>
+    </div>
+
+    <!-- ARTISTIC PARAMETER MENU -->
+    <!-- This is the main menu that shows all artistic parameters organized by category -->
+    <!-- It provides a comprehensive view of creative controls without overwhelming complexity -->
+    <div class="menu hidden" id="menu">
+        <div style="display: flex; gap: 20px; width: 100%;">
+            <!-- Main artistic parameters panel -->
+            <div style="flex: 1; min-width: 300px;">
+                <h2 style="color: #4CAF50; margin-bottom: 15px; font-size: 18px;">📊 All Parameters</h2>
+                
+                <!-- This list gets populated by JavaScript with organized artistic parameters -->
+                <!-- Categories like Movement, Pattern, Camera, etc. help users understand parameter relationships -->
+                <div id="allParametersList" style="font-family: monospace; font-size: 12px; line-height: 1.3;"></div>
+            </div>
+            
+            <!-- Color and audio control panel -->
+            <div style="flex: 1; min-width: 300px;">
+                <h2 style="color: #FFC107; margin-bottom: 15px; font-size: 18px;">🎨 Color & Audio</h2>
+                
+                <!-- Color palette selection interface -->
+                <div style="margin-bottom: 15px;">
+                    <h3 style="color: #FFC107; margin-bottom: 8px; font-size: 14px;">Color Palettes</h3>
+                    <div id="allPalettesList" style="font-family: monospace; font-size: 12px; line-height: 1.3;"></div>
+                </div>
+                
+                <!-- Audio system status and controls -->
+                <div style="margin-bottom: 15px;">
+                    <h3 style="color: #FFC107; margin-bottom: 8px; font-size: 14px;">Audio Status</h3>
+                    <div id="allAudioStatus" style="font-family: monospace; font-size: 12px; line-height: 1.3;"></div>
+                </div>
+                
+                <!-- Quick reference for artistic controls -->
+                <div>
+                    <h3 style="color: #FFC107; margin-bottom: 8px; font-size: 14px;">Quick Controls</h3>
+                    <div style="font-size: 11px; line-height: 1.2;">
+                        <strong>Navigation:</strong> ↑/↓ switch • ←/→ adjust<br>
+                        <strong>Randomize:</strong> C colors • . parameters<br>
+                        <strong>Reset:</strong> R current • Shift+R all<br>
+                        <strong>Audio:</strong> A upload • M microphone<br>
+                        <strong>Files:</strong> S save • L load<br>
+                        <strong>Undo:</strong> Ctrl+Z/Y • Space pause<br>
+                        <strong>Colors:</strong> I invert • Shift+C reset<br>
+                        <strong style="color: #FFC107;">Debug:</strong> ; mathematical mode<br>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 15px; opacity: 0.7; font-size: 12px;">
+            Press ESC to close • Current parameter highlighted in green
+        </div>
+    </div>
+
+    <!-- MATHEMATICAL EXPLORATION INTERFACE -->
+    <!-- This is the "laboratory" where mathematical exploration happens -->
+    <!-- It's designed to be comprehensive yet organized, providing deep control without chaos -->
+    <div class="debug-menu hidden" id="debugMenu">
+        <div style="display: flex; width: 100%; height: 90vh;">
+            
+            <!-- MAIN DEBUG PARAMETERS PANEL -->
+            <!-- This panel displays all mathematical parameters organized by their functional relationships -->
+            <!-- The organization helps users understand which parameters work together mathematically -->
+            <div style="flex: 1; min-width: 500px; overflow-y: auto;">
+                <h2 style="color: #FF5722; margin-bottom: 15px; font-size: 16px; font-family: 'Courier New', monospace;">
+                    🔧 MATHEMATICAL PARAMETER CONTROL
+                </h2>
+                
+                <!-- JavaScript populates this with categorized debug parameters -->
+                <!-- Categories like "Layer System", "Camera Path", "Pattern Generation" etc. -->
+                <!-- Each category represents a different mathematical subsystem within the fractal visualization -->
+                <div id="debugParametersList" style="font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.4;">
+                    <!-- Mathematical parameters get populated here by the debug UI manager -->
+                    <!-- The display shows parameter names, current values, and mathematical relationships -->
+                </div>
+            </div>
+            
+            <!-- DEBUG CONTROL AND INFORMATION PANEL -->
+            <!-- This side panel provides context, help, and advanced controls for mathematical exploration -->
+            <div style="flex: 0 0 320px; margin-left: 20px; font-family: 'Courier New', monospace;">
+                
+                <!-- DEBUG NAVIGATION CONTROLS -->
+                <div style="background: rgba(40, 40, 40, 0.3); border-radius: 4px; padding: 12px; margin-bottom: 15px; border: 1px solid #444;">
+                    <h3 style="color: #FFC107; margin-bottom: 10px; font-size: 14px;">Navigation Controls</h3>
+                    
+                    <div style="font-size: 10px; line-height: 1.3; margin-bottom: 15px; color: #cccccc;">
+                        <!-- These controls mirror the artistic interface but operate on mathematical parameters -->
+                        <div><strong>Navigate:</strong> ↑/↓ switch mathematical parameter</div>
+                        <div><strong>Adjust:</strong> ←/→ change mathematical value</div>
+                        <div><strong>Reset:</strong> R reset current, Shift+R reset all</div>
+                        <div><strong>Explore:</strong> . randomize (safe parameters only)</div>
+                        <div><strong>Export:</strong> E copy mathematical state to clipboard</div>
+                        <div><strong>Stats:</strong> D show system diagnostics</div>
+                        <div><strong>Help:</strong> H show debug help information</div>
+                        <div><strong>Exit:</strong> ; or ESC return to artistic mode</div>
+                    </div>
+                </div>
+                
+                <!-- CURRENT PARAMETER DETAIL PANEL -->
+                <!-- This provides deep information about whichever mathematical parameter is currently selected -->
+                <div style="background: rgba(40, 40, 40, 0.3); border-radius: 4px; padding: 12px; margin-bottom: 15px; border: 1px solid #444;">
+                    <h3 style="color: #FF9800; margin-bottom: 8px; font-size: 13px;">Current Parameter Detail</h3>
+                    
+                    <!-- JavaScript populates this with detailed information about the selected mathematical parameter -->
+                    <!-- This includes value, range, mathematical description, and impact explanation -->
+                    <div id="debugCurrentParamInfo" style="font-size: 10px; line-height: 1.3; color: #ffffff;">
+                        <!-- Detailed parameter information gets populated here -->
+                        <!-- This helps users understand what each mathematical parameter actually controls -->
+                    </div>
+                </div>
+                
+                <!-- MATHEMATICAL EXPLORATION WARNING -->
+                <!-- This panel helps users understand they're working with mathematical internals -->
+                <div style="background: rgba(255, 170, 0, 0.1); border: 1px solid #ffaa00; border-radius: 4px; padding: 10px; margin-bottom: 15px;">
+                    <h3 style="color: #ffaa00; margin-bottom: 8px; font-size: 13px;">⚠️ Mathematical Exploration</h3>
+                    <div style="font-size: 9px; line-height: 1.2; color: #ffaa00;">
+                        You are directly controlling the mathematical foundations of the fractal visualization.
+                        These parameters expose shader internals and mathematical constants.
+                        Extreme values may cause visual artifacts or performance issues.
+                        Use Ctrl+Z to safely undo any changes that produce unexpected results.
+                    </div>
+                </div>
+                
+                <!-- MATHEMATICAL CATEGORY REFERENCE -->
+                <!-- This panel helps users understand the organization of mathematical parameters -->
+                <div style="background: rgba(40, 40, 40, 0.3); border-radius: 4px; padding: 12px; margin-bottom: 15px; border: 1px solid #444;">
+                    <h3 style="color: #00BCD4; margin-bottom: 8px; font-size: 13px;">Mathematical Categories</h3>
+                    <div style="font-size: 9px; line-height: 1.2; color: #cccccc;">
+                        <!-- These categories help users understand the mathematical architecture -->
+                        <div><strong style="color: #00BCD4;">LAYER SYSTEM</strong> - Multi-layer rendering and blending mathematics</div>
+                        <div><strong style="color: #4CAF50;">CAMERA PATH</strong> - Mathematical functions that generate tunnel movement</div>
+                        <div><strong style="color: #9C27B0;">KALEIDOSCOPE</strong> - Radial symmetry and mirror mathematics</div>
+                        <div><strong style="color: #FF9800;">PATTERN GEN</strong> - Truchet pattern probability and distribution</div>
+                        <div><strong style="color: #F44336;">RANDOM SEEDS</strong> - Hash function multipliers for pseudo-randomness</div>
+                        <div><strong style="color: #607D8B;">FIELD OF VIEW</strong> - 3D projection and perspective mathematics</div>
+                        <div><strong style="color: #795548;">RENDERING</strong> - Anti-aliasing, line width, and quality parameters</div>
+                    </div>
+                </div>
+                
+                <!-- SYSTEM PERFORMANCE INDICATOR -->
+                <!-- This helps users understand when their mathematical choices might affect performance -->
+                <div style="background: rgba(40, 40, 40, 0.3); border-radius: 4px; padding: 12px; border: 1px solid #444;">
+                    <h3 style="color: #2196F3; margin-bottom: 8px; font-size: 13px;">System Status</h3>
+                    <div id="debugSystemStatus" style="font-size: 9px; line-height: 1.2; color: #cccccc;">
+                        <!-- JavaScript will populate this with real-time system performance information -->
+                        <!-- This helps users understand the computational cost of their mathematical explorations -->
+                        Monitoring mathematical complexity and rendering performance...
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- DEBUG MENU FOOTER -->
+        <!-- This provides final guidance and context for mathematical exploration -->
+        <div style="text-align: center; margin-top: 10px; opacity: 0.7; font-size: 10px; font-family: 'Courier New', monospace;">
+            🧮 Mathematical Exploration Mode Active • Press ; or ESC to return to artistic interface • Current parameter highlighted in green
+        </div>
+    </div>
+
+    <!-- ACCESSIBILITY ENHANCEMENTS -->
+    <!-- These hidden elements provide screen reader support and keyboard navigation hints -->
+    <div class="sr-only" aria-live="polite" id="a11y-announcements">
+        <!-- Screen reader announcements for mode changes and important status updates -->
+    </div>
+
+    <!-- APPLICATION INITIALIZATION -->
+    <!-- The main application module handles the orchestration of all systems -->
+    <!-- This script tag must come last to ensure all DOM elements are available -->
+    <script type="module" src="js/main.js"></script>
+    
+    <!-- DEVELOPMENT AND DEBUGGING SUPPORT -->
+    <!-- These scripts are only loaded in development environments for advanced debugging -->
+    <script>
+        // Development environment detection and console enhancement
+        if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+            console.log('%c🚀 Kaldao Fractal Visualizer (Development Mode)', 'color: #4CAF50; font-size: 16px; font-weight: bold;');
+            console.log('%cDebug console interface will be available as window.kaldaoDebug', 'color: #FFC107;');
+        }
+        
+        // Performance monitoring for mathematical exploration optimization
+        if ('performance' in window && 'measure' in performance) {
+            performance.mark('kaldao-page-start');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+/* Main styles and layout */
+* { 
+    margin: 0; 
+    padding: 0; 
+    box-sizing: border-box; 
+}
+
+body { 
+    background: #000; 
+    color: #fff; 
+    font-family: 'Courier New', monospace; 
+    overflow: hidden; 
+    touch-action: manipulation;
+}
+
+#canvas { 
+    display: block; 
+}
+
+/* Utility classes */
+.hidden { 
+    opacity: 0; 
+    pointer-events: none; 
+}
+
+.error { 
+    color: #ff4444; 
+}
+
+.success { 
+    color: #44ff44; 
+}
+
+.info {
+    color: #ffffff;
+}
+
+/* Mobile-specific styles */
+@media (max-width: 768px) {
+    body {
+        touch-action: manipulation;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        -khtml-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+    }
+    
+    .controls { 
+        display: none !important; /* Hide keyboard controls on mobile */
+    }
+    
+    .menu-desktop { 
+        display: none !important; /* Hide desktop menu layout on mobile */
+    }
+    
+    .menu-mobile { 
+        display: block !important; /* Show mobile menu layout */
+    }
+}
+
+@media (min-width: 769px) {
+    .menu-desktop { 
+        display: block; 
+    }
+    
+    .menu-mobile { 
+        display: none; 
+    }
+}
+
+/* Prevent text selection on touch devices */
+.ui, .controls, .menu {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}

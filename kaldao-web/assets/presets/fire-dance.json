@@ -1,0 +1,81 @@
+{
+  "name": "Fire Dance",
+  "description": "Energetic fire-themed preset with fast rotations and warm colors",
+  "parameters": {
+    "fly_speed": 0.8,
+    "contrast": 1.5,
+    "kaleidoscope_segments": 16,
+    "truchet_radius": 0.45,
+    "center_fill_radius": 0.1,
+    "layer_count": 7,
+    "rotation_speed": 0.15,
+    "zoom_level": 0.8,
+    "color_intensity": 1.6,
+    "plane_rotation_speed": 1.2,
+    "camera_tilt_x": 2.0,
+    "camera_tilt_y": -1.0,
+    "camera_roll": 0.3,
+    "path_stability": 0.3,
+    "path_scale": 1.8,
+    "color_speed": 1.2
+  },
+  "palette": {
+    "currentPaletteIndex": 2,
+    "useColorPalette": true,
+    "invertColors": false,
+    "palettes": [
+      {
+        "name": "B&W",
+        "a": [0.5, 0.5, 0.5],
+        "b": [0.5, 0.5, 0.5],
+        "c": [1.0, 1.0, 1.0],
+        "d": [0.0, 0.0, 0.0]
+      },
+      {
+        "name": "Rainbow",
+        "a": [0.5, 0.5, 0.5],
+        "b": [0.5, 0.5, 0.5],
+        "c": [1.0, 1.0, 1.0],
+        "d": [0.0, 0.33, 0.67]
+      },
+      {
+        "name": "Fire",
+        "a": [0.7, 0.3, 0.1],
+        "b": [0.8, 0.4, 0.2],
+        "c": [2.5, 1.2, 0.6],
+        "d": [0.0, 0.15, 0.4]
+      },
+      {
+        "name": "Ocean",
+        "a": [0.2, 0.5, 0.8],
+        "b": [0.2, 0.3, 0.5],
+        "c": [1.0, 1.5, 2.0],
+        "d": [0.0, 0.2, 0.5]
+      },
+      {
+        "name": "Purple",
+        "a": [0.8, 0.5, 0.4],
+        "b": [0.2, 0.4, 0.2],
+        "c": [2.0, 1.0, 1.0],
+        "d": [0.0, 0.25, 0.25]
+      },
+      {
+        "name": "Neon",
+        "a": [0.2, 0.2, 0.2],
+        "b": [0.8, 0.8, 0.8],
+        "c": [1.0, 2.0, 1.5],
+        "d": [0.0, 0.5, 0.8]
+      },
+      {
+        "name": "Sunset",
+        "a": [0.7, 0.3, 0.2],
+        "b": [0.3, 0.2, 0.1],
+        "c": [1.5, 1.0, 0.8],
+        "d": [0.0, 0.1, 0.3]
+      }
+    ]
+  },
+  "version": "1.0",
+  "timestamp": "2025-06-07T15:30:00.000Z",
+  "type": "preset"
+}
