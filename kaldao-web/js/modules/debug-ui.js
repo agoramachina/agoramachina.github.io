@@ -110,13 +110,143 @@ export class DebugUIManager {
         this.app.ui.updateStatus(`${param.name}: ${newValue.toFixed(3)} (${this.parameterModificationCount} total changes)`, 'success');
     }
 
-    // Get currently selected debug parameter key
-    getCurrentDebugParameterKey() {
-        return this.allDebugKeys[this.currentDebugParameterIndex] || null;
+    // ENHANCEMENT: Set up mouse interaction for parameter selection and editing
+    setupMouseInteraction() {
+        const parameterLines = document.querySelectorAll('.debug-param-line[data-param-key]');
+        
+        parameterLines.forEach(line => {
+            const paramKey = line.getAttribute('data-param-key');
+            const paramType = line.getAttribute('data-param-type');
+            
+            // Click to select parameter
+            line.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.selectParameterByKey(paramKey, paramType);
+            });
+            
+            // Double-click to edit parameter value
+            line.addEventListener('dblclick', (e) => {
+                e.preventDefault();
+                this.editParameterValue(paramKey, line);
+            });
+        });
+    }
+    
+    // ENHANCEMENT: Select a parameter by its key (for mouse interaction)
+    selectParameterByKey(paramKey, paramType) {
+        if (paramType === 'artistic') {
+            // Switch to normal mode and select artistic parameter
+            if (this.app.debugMenuVisible) {
+                this.app.debugUI.toggleDebugMenu(); // Exit debug mode
+            }
+            const index = this.app.parameters.parameterKeys.indexOf(paramKey);
+            if (index !== -1) {
+                this.app.currentParameterIndex = index;
+                this.app.ui.updateDisplay();
+            }
+        } else {
+            // Select debug parameter
+            const index = this.allDebugKeys.indexOf(paramKey);
+            if (index !== -1) {
+                this.currentDebugParameterIndex = index;
+                this.updateDebugMenuDisplay();
+                
+                const param = this.app.parameters.getParameter(paramKey);
+                this.app.ui.updateStatus(`Selected: ${param.name}`, 'info');
+            }
+        }
+    }
+    
+    // ENHANCEMENT: Direct editing of parameter values
+    editParameterValue(paramKey, lineElement) {
+        const param = this.app.parameters.getParameter(paramKey);
+        if (!param) return;
+        
+        const currentValue = param.value;
+        
+        // Create inline editor
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.value = currentValue;
+        input.min = param.min;
+        input.max = param.max;
+        input.step = param.step;
+        input.style.cssText = `
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid #4CAF50;
+            color: #ffffff;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            padding: 2px 4px;
+            border-radius: 2px;
+            width: 80px;
+            margin-left: 10px;
+        `;
+        
+        // Save reference to original content
+        const originalContent = lineElement.innerHTML;
+        
+        // Replace line content with editor
+        const paramName = param.name.padEnd(26);
+        lineElement.innerHTML = `${paramName}: `;
+        lineElement.appendChild(input);
+        
+        // Focus and select all text
+        input.focus();
+        input.select();
+        
+        // Handle editing completion
+        const finishEdit = () => {
+            const newValue = parseFloat(input.value);
+            
+            if (!isNaN(newValue) && newValue >= param.min && newValue <= param.max) {
+                // Save state for undo
+                this.app.saveStateForUndo();
+                
+                // Update parameter value
+                this.app.parameters.setValue(paramKey, newValue);
+                
+                // Update displays
+                this.updateDebugMenuDisplay();
+                this.app.ui.updateDisplay();
+                
+                this.app.ui.updateStatus(`${param.name} set to ${newValue.toFixed(3)}`, 'success');
+            } else {
+                // Invalid value, revert
+                lineElement.innerHTML = originalContent;
+                this.app.ui.updateStatus(`Invalid value for ${param.name} (range: ${param.min} to ${param.max})`, 'error');
+            }
+        };
+        
+        // Handle keyboard events
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                finishEdit();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                lineElement.innerHTML = originalContent;
+            }
+        });
+        
+        // Handle focus loss
+        input.addEventListener('blur', finishEdit);
+    }
+    
+    // ENHANCEMENT: Get currently selected parameter key (works for both artistic and debug)
+    getCurrentSelectedParameterKey() {
+        if (this.app.debugMenuVisible) {
+            // In debug mode, return current debug parameter
+            return this.allDebugKeys[this.currentDebugParameterIndex] || null;
+        } else {
+            // In normal mode, return current artistic parameter
+            const paramKeys = this.app.parameters.getParameterKeys();
+            return paramKeys[this.app.currentParameterIndex] || null;
+        }
     }
 
     // Update the debug menu display
-    // This rebuilds the entire debug interface to reflect current parameter values
+    // This rebuilds the entire debug interface to reflect current parameter values and includes ALL parameters
     updateDebugMenuDisplay() {
         if (!this.app.debugMenuVisible) return;
 
@@ -126,7 +256,40 @@ export class DebugUIManager {
         const categories = this.app.parameters.getDebugParameterCategories();
         let debugHTML = '';
 
-        // Build the display category by category
+        // ENHANCEMENT: Include all artistic parameters in debug view for comprehensive control
+        debugHTML += '<div class="debug-category-header" style="color: #4CAF50; font-weight: bold; margin: 15px 0 8px 0; font-size: 14px;">ARTISTIC PARAMETERS</div>';
+        
+        // Add all regular artistic parameters to debug view
+        this.app.parameters.parameterKeys.forEach(key => {
+            const param = this.app.parameters.getParameter(key);
+            if (!param) return;
+            
+            const index = this.app.parameters.parameterKeys.indexOf(key);
+            const isCurrent = key === this.getCurrentSelectedParameterKey();
+            
+            let displayValue;
+            if (param.step >= 1.0) {
+                displayValue = param.value.toFixed(0);
+            } else if (param.step >= 0.1) {
+                displayValue = param.value.toFixed(1);
+            } else if (param.step >= 0.01) {
+                displayValue = param.value.toFixed(2);
+            } else if (param.step >= 0.001) {
+                displayValue = param.value.toFixed(3);
+            } else {
+                displayValue = param.value.toFixed(4);
+            }
+            
+            const textColor = isCurrent ? '#4CAF50' : '#ffffff';
+            const fontWeight = isCurrent ? 'bold' : 'normal';
+            const backgroundColor = isCurrent ? 'rgba(76, 175, 80, 0.1)' : 'transparent';
+            
+            debugHTML += `<div class="debug-param-line" data-param-key="${key}" data-param-type="artistic" style="color: ${textColor}; font-weight: ${fontWeight}; background: ${backgroundColor}; margin: 2px 0; font-size: 11px; padding: 1px 3px; border-radius: 2px;">`;
+            debugHTML += `${param.name.padEnd(26)}: ${displayValue.padStart(8)}`;
+            debugHTML += `</div>`;
+        });
+
+        // Build the display category by category for debug parameters
         Object.keys(categories).forEach(categoryName => {
             // Category header with consistent styling
             debugHTML += `<div class="debug-category-header" style="color: #00BCD4; font-weight: bold; margin: 15px 0 8px 0; font-size: 14px;">${categoryName}</div>`;
@@ -137,10 +300,9 @@ export class DebugUIManager {
                 if (!param) return;
                 
                 const index = this.allDebugKeys.indexOf(key);
-                const isCurrent = index === this.currentDebugParameterIndex;
+                const isCurrent = key === this.getCurrentSelectedParameterKey();
                 
                 // Determine appropriate precision for display based on parameter step size
-                // Fine-grained parameters need more decimal places for meaningful display
                 let displayValue;
                 if (param.step >= 1.0) {
                     displayValue = param.value.toFixed(0);
@@ -159,15 +321,17 @@ export class DebugUIManager {
                 const fontWeight = isCurrent ? 'bold' : 'normal';
                 const backgroundColor = isCurrent ? 'rgba(76, 175, 80, 0.1)' : 'transparent';
                 
-                // Create a fixed-width layout for clean alignment
-                // This makes it easy to scan through many parameters
-                debugHTML += `<div class="debug-param-line" style="color: ${textColor}; font-weight: ${fontWeight}; background: ${backgroundColor}; margin: 2px 0; font-size: 11px; padding: 1px 3px; border-radius: 2px;">`;
+                // ENHANCEMENT: Add click handlers for mouse interaction
+                debugHTML += `<div class="debug-param-line" data-param-key="${key}" data-param-type="debug" style="color: ${textColor}; font-weight: ${fontWeight}; background: ${backgroundColor}; margin: 2px 0; font-size: 11px; padding: 1px 3px; border-radius: 2px;">`;
                 debugHTML += `${param.name.padEnd(26)}: ${displayValue.padStart(8)}`;
                 debugHTML += `</div>`;
             });
         });
 
         debugParamsList.innerHTML = debugHTML;
+        
+        // ENHANCEMENT: Add click event listeners for mouse interaction
+        this.setupMouseInteraction();
         
         // Update the current parameter info panel
         this.updateCurrentParameterInfo();

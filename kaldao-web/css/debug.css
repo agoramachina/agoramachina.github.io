@@ -1,0 +1,538 @@
+/* 
+ * KALDAO FRACTAL VISUALIZER - DEBUG INTERFACE STYLING
+ * 
+ * This CSS file creates the visual language for mathematical exploration
+ * within the fractal visualization system. The design principles implemented here
+ * support cognitive efficiency when working with complex mathematical parameters.
+ *
+ * DESIGN PHILOSOPHY:
+ * - Visual hierarchy guides the eye through complex mathematical relationships
+ * - Consistent spacing reduces cognitive load during parameter exploration
+ * - Color coding helps users quickly identify different mathematical systems
+ * - Typography creates distinction between normal and debug operational modes
+ * - Layout supports both focused work and broad system understanding
+ */
+
+/* ==========================================================================
+   DEBUG MENU FOUNDATION - Core Container and Layout Structure
+   ========================================================================== */
+
+/*
+ * The debug menu container creates a full-screen mathematical exploration environment.
+ * Unlike the artistic interface which shares space with the visualization, the debug
+ * interface takes complete control when active, creating a dedicated "laboratory" space.
+ * 
+ * This design choice reflects the different cognitive needs of artistic creation
+ * vs. mathematical exploration. Artists want to see their changes in real-time while
+ * adjusting parameters, but mathematical exploration often benefits from focused
+ * attention on parameter relationships without visual distraction.
+ */
+.debug-menu {
+    position: fixed;                    /* Take complete control of the viewport */
+    top: 0;
+    left: 0;
+    width: 100vw;                      /* Fill entire viewport width */
+    height: 100vh;                     /* Fill entire viewport height */
+    
+    /* Create a sophisticated backdrop that suggests precision and focus */
+    background: linear-gradient(135deg, 
+        rgba(0, 0, 0, 0.98) 0%, 
+        rgba(20, 20, 30, 0.98) 50%, 
+        rgba(0, 0, 0, 0.98) 100%);
+    backdrop-filter: blur(2px);         /* Subtle blur adds depth and focus */
+    
+    /* Typography foundation for mathematical precision */
+    font-family: 'Courier New', 'Monaco', 'Lucida Console', monospace;
+    color: #ffffff;
+    
+    /* Layout foundation for complex parameter organization */
+    padding: 20px;
+    box-sizing: border-box;
+    
+    /* Depth and layering for interface hierarchy */
+    z-index: 2000;                     /* Ensure debug interface sits above everything else */
+    
+    /* Smooth transitions create professional feel during mode changes */
+    transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+    
+    /* Prevent text selection to maintain professional tool feel */
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+}
+
+/*
+ * Hidden state management for debug menu visibility
+ * The hidden class provides smooth visual transitions when entering/exiting debug mode
+ */
+.debug-menu.hidden {
+    opacity: 0;                        /* Fade out completely */
+    transform: scale(0.95);            /* Subtle scale creates depth during transition */
+    pointer-events: none;              /* Disable all interactions when hidden */
+}
+
+/* ==========================================================================
+   MATHEMATICAL PARAMETER DISPLAY SYSTEM
+   ========================================================================== */
+
+/*
+ * The parameter list container creates an organized, scannable view of all
+ * mathematical parameters. The design supports both detailed examination of
+ * individual parameters and rapid navigation through the complete parameter space.
+ */
+#debugParametersList {
+    font-family: 'Courier New', monospace;  /* Monospace ensures perfect alignment */
+    font-size: 11px;                        /* Small enough to show many parameters */
+    line-height: 1.4;                       /* Comfortable reading without waste */
+    letter-spacing: 0.5px;                  /* Improve readability at small sizes */
+    
+    /* Scrolling behavior for parameter lists longer than viewport */
+    max-height: calc(90vh - 100px);          /* Leave room for headers and controls */
+    overflow-y: auto;                        /* Enable scrolling when needed */
+    
+    /* Custom scrollbar styling for professional appearance */
+    scrollbar-width: thin;                   /* Firefox */
+    scrollbar-color: #555 #222;             /* Firefox */
+}
+
+/* Webkit scrollbar styling for Chrome/Safari */
+#debugParametersList::-webkit-scrollbar {
+    width: 8px;                             /* Narrow scrollbar saves space */
+}
+
+#debugParametersList::-webkit-scrollbar-track {
+    background: rgba(34, 34, 34, 0.5);     /* Subtle track background */
+    border-radius: 4px;
+}
+
+#debugParametersList::-webkit-scrollbar-thumb {
+    background: rgba(85, 85, 85, 0.8);     /* Visible but not distracting */
+    border-radius: 4px;
+    border: 1px solid rgba(68, 68, 68, 0.3);
+}
+
+#debugParametersList::-webkit-scrollbar-thumb:hover {
+    background: rgba(102, 102, 102, 0.9);  /* Subtle hover feedback */
+}
+
+/*
+ * Category headers create visual organization within the mathematical parameter space.
+ * Each category represents a different mathematical subsystem, and the visual treatment
+ * helps users understand these conceptual groupings.
+ */
+.debug-category-header {
+    color: #00BCD4 !important;             /* Distinctive cyan for mathematical categories */
+    font-weight: bold !important;
+    font-size: 14px !important;
+    margin: 20px 0 10px 0 !important;      /* Generous spacing creates clear sections */
+    
+    /* Visual enhancement for category identification */
+    border-bottom: 2px solid rgba(0, 188, 212, 0.3);
+    padding-bottom: 4px;
+    
+    /* Subtle background helps distinguish categories */
+    background: linear-gradient(90deg, 
+        rgba(0, 188, 212, 0.1) 0%, 
+        rgba(0, 188, 212, 0.05) 50%, 
+        transparent 100%);
+    padding-left: 8px;
+    border-radius: 3px;
+    
+    /* Typography enhancement for scanning */
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+/*
+ * Individual parameter lines create the core interaction surface for mathematical exploration.
+ * The design supports rapid scanning, precise value reading, and clear indication of
+ * the currently selected parameter.
+ */
+.debug-param-line {
+    font-family: 'Courier New', monospace !important;
+    font-size: 11px !important;
+    line-height: 1.4 !important;
+    margin: 2px 0 !important;
+    
+    /* Precise spacing for alignment and readability */
+    padding: 2px 6px;
+    border-radius: 3px;
+    
+    /* Preserve formatting for perfect parameter value alignment */
+    white-space: pre !important;
+    
+    /* Smooth transitions for selection feedback */
+    transition: all 0.15s ease;
+    
+    /* Subtle interactive feedback */
+    cursor: default;
+}
+
+/*
+ * Current parameter highlighting creates clear visual focus during mathematical exploration.
+ * The highlighting needs to be obvious enough to guide attention but not so bright
+ * that it becomes distracting during extended use.
+ */
+.debug-param-current,
+.debug-param-line[style*="color: #4CAF50"] {
+    color: #4CAF50 !important;             /* Green indicates current selection */
+    font-weight: bold !important;
+    
+    /* Background highlight creates area of focus */
+    background: linear-gradient(90deg, 
+        rgba(76, 175, 80, 0.15) 0%, 
+        rgba(76, 175, 80, 0.08) 100%) !important;
+    
+    /* Subtle border reinforces selection */
+    border-left: 3px solid #4CAF50;
+    
+    /* Enhanced visual treatment for current parameter */
+    box-shadow: inset 0 0 0 1px rgba(76, 175, 80, 0.2);
+    
+    /* Slight scale creates depth without disrupting layout */
+    transform: translateX(2px);
+}
+
+/*
+ * Modified parameter indication helps users track which mathematical values
+ * they've changed from defaults during their exploration session.
+ */
+.debug-param-modified {
+    color: #FFC107 !important;             /* Amber indicates modification */
+    border-left: 2px solid rgba(255, 193, 7, 0.4);
+}
+
+/* ==========================================================================
+   CONTROL PANELS AND INFORMATION DISPLAY
+   ========================================================================== */
+
+/*
+ * Control section containers create organized information zones within the debug interface.
+ * Each section serves a specific function in the mathematical exploration workflow.
+ */
+.debug-controls-section {
+    background: linear-gradient(135deg, 
+        rgba(50, 50, 60, 0.4) 0%, 
+        rgba(40, 40, 50, 0.4) 100%);
+    border: 1px solid rgba(85, 85, 85, 0.6);
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 15px;
+    
+    /* Subtle depth effect */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    
+    /* Smooth hover interaction for better user experience */
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.debug-controls-section:hover {
+    border-color: rgba(0, 188, 212, 0.4);
+    box-shadow: 0 2px 12px rgba(0, 188, 212, 0.1);
+}
+
+/*
+ * Current parameter information panel provides detailed context about
+ * the mathematical parameter currently being examined or modified.
+ */
+#debugCurrentParamInfo {
+    font-size: 10px !important;
+    line-height: 1.3 !important;
+    color: #ffffff;
+    
+    /* Enhanced readability for detailed parameter descriptions */
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* ==========================================================================
+   WARNING AND STATUS INDICATORS
+   ========================================================================== */
+
+/*
+ * Mathematical exploration warning creates appropriate caution for users
+ * working with the mathematical foundations of the fractal system.
+ */
+.debug-warning {
+    background: linear-gradient(135deg, 
+        rgba(255, 170, 0, 0.15) 0%, 
+        rgba(255, 152, 0, 0.1) 100%);
+    border: 1px solid rgba(255, 170, 0, 0.4);
+    border-radius: 6px;
+    padding: 12px;
+    color: #ffaa00 !important;
+    
+    /* Visual emphasis for important safety information */
+    box-shadow: 0 0 10px rgba(255, 170, 0, 0.1);
+    
+    /* Icon-like visual treatment */
+    position: relative;
+}
+
+.debug-warning::before {
+    content: "⚠️";
+    font-size: 16px;
+    position: absolute;
+    top: 8px;
+    left: 8px;
+}
+
+.debug-warning h3 {
+    margin-left: 25px;                      /* Account for warning icon */
+}
+
+/*
+ * Status indicators provide real-time feedback about system performance
+ * and mathematical complexity during parameter exploration.
+ */
+.debug-status-active {
+    color: #4CAF50 !important;
+    font-weight: bold;
+}
+
+.debug-status-inactive {
+    color: #999999 !important;
+}
+
+.debug-status-warning {
+    color: #FFC107 !important;
+    animation: gentle-pulse 2s infinite;
+}
+
+.debug-status-error {
+    color: #f44336 !important;
+    animation: gentle-pulse 1s infinite;
+}
+
+/* ==========================================================================
+   RESPONSIVE DESIGN FOR MATHEMATICAL EXPLORATION
+   ========================================================================== */
+
+/*
+ * Large screens (desktop workstations) - Full mathematical exploration layout
+ * These breakpoints support serious mathematical work on professional displays
+ */
+@media (min-width: 1400px) {
+    .debug-menu {
+        padding: 30px;                      /* More generous spacing for large displays */
+    }
+    
+    #debugParametersList {
+        font-size: 12px;                    /* Slightly larger text on big screens */
+        columns: 2;                         /* Two-column layout for efficiency */
+        column-gap: 30px;
+        column-rule: 1px solid rgba(85, 85, 85, 0.3);
+    }
+    
+    .debug-category-header {
+        break-inside: avoid;                /* Keep categories intact across columns */
+        break-after: avoid;
+    }
+}
+
+/*
+ * Medium screens (laptops) - Balanced mathematical exploration
+ * Most development and mathematical exploration happens at this screen size
+ */
+@media (max-width: 1200px) and (min-width: 768px) {
+    .debug-menu {
+        font-size: 10px;                    /* Slightly smaller to fit more information */
+    }
+    
+    .debug-param-line {
+        font-size: 10px !important;
+    }
+    
+    .debug-category-header {
+        font-size: 12px !important;
+    }
+}
+
+/*
+ * Small screens (tablets and large phones) - Simplified mathematical exploration
+ * Mathematical work is still possible but layout adapts for touch interaction
+ */
+@media (max-width: 767px) {
+    .debug-menu {
+        padding: 15px;
+        font-size: 9px;
+    }
+    
+    /* Single column layout for small screens */
+    .debug-menu div[style*="flex"] {
+        flex-direction: column !important;
+    }
+    
+    .debug-menu div[style*="min-width"] {
+        min-width: auto !important;
+        margin-left: 0 !important;
+        margin-top: 15px;
+    }
+    
+    /* Enlarged touch targets for mobile mathematical exploration */
+    .debug-param-line {
+        padding: 6px 8px;
+        font-size: 10px !important;
+        line-height: 1.5 !important;
+    }
+    
+    /* Simplified category headers for mobile */
+    .debug-category-header {
+        font-size: 11px !important;
+        margin: 15px 0 8px 0 !important;
+    }
+    
+    /* Enhanced current parameter visibility on mobile */
+    .debug-param-current {
+        border-left-width: 4px;
+        transform: translateX(3px);
+    }
+}
+
+/* ==========================================================================
+   ANIMATION AND INTERACTION ENHANCEMENTS
+   ========================================================================== */
+
+/*
+ * Subtle animations provide feedback and create professional polish
+ * without distracting from mathematical exploration work
+ */
+@keyframes gentle-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+@keyframes parameter-highlight {
+    0% { background-color: rgba(76, 175, 80, 0.0); }
+    50% { background-color: rgba(76, 175, 80, 0.3); }
+    100% { background-color: rgba(76, 175, 80, 0.15); }
+}
+
+/*
+ * Focus states for keyboard navigation during mathematical exploration
+ * These are essential for efficient parameter navigation using arrow keys
+ */
+.debug-param-line:focus {
+    outline: 2px solid rgba(0, 188, 212, 0.6);
+    outline-offset: 1px;
+}
+
+/*
+ * Hover states for mouse-based mathematical exploration
+ * Subtle feedback helps users understand interactive elements
+ */
+.debug-param-line:hover:not(.debug-param-current) {
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 2px solid rgba(255, 255, 255, 0.2);
+    transform: translateX(1px);
+}
+
+/* ==========================================================================
+   MATHEMATICAL CATEGORY COLOR CODING
+   ========================================================================== */
+
+/*
+ * Color coding for different mathematical subsystems helps users quickly
+ * identify and navigate to related parameters during exploration
+ */
+
+/* Layer System parameters - Blue family (foundational) */
+.debug-param-line[data-category="LAYER SYSTEM"] {
+    border-left-color: rgba(33, 150, 243, 0.3);
+}
+
+/* Camera Path parameters - Green family (movement) */
+.debug-param-line[data-category="CAMERA PATH"] {
+    border-left-color: rgba(76, 175, 80, 0.3);
+}
+
+/* Kaleidoscope parameters - Purple family (symmetry) */
+.debug-param-line[data-category="KALEIDOSCOPE"] {
+    border-left-color: rgba(156, 39, 176, 0.3);
+}
+
+/* Pattern Generation parameters - Orange family (complexity) */
+.debug-param-line[data-category="PATTERN GENERATION"] {
+    border-left-color: rgba(255, 152, 0, 0.3);
+}
+
+/* Random Seeds parameters - Red family (variability) */
+.debug-param-line[data-category="RANDOM SEEDS"] {
+    border-left-color: rgba(244, 67, 54, 0.3);
+}
+
+/* Field of View parameters - Teal family (perspective) */
+.debug-param-line[data-category="FIELD OF VIEW"] {
+    border-left-color: rgba(0, 150, 136, 0.3);
+}
+
+/* Rendering parameters - Brown family (quality) */
+.debug-param-line[data-category="RENDERING"] {
+    border-left-color: rgba(121, 85, 72, 0.3);
+}
+
+/* ==========================================================================
+   ACCESSIBILITY ENHANCEMENTS FOR MATHEMATICAL EXPLORATION
+   ========================================================================== */
+
+/*
+ * High contrast mode support for mathematical work in various lighting conditions
+ */
+@media (prefers-contrast: high) {
+    .debug-menu {
+        background: #000000;
+        color: #ffffff;
+    }
+    
+    .debug-param-current {
+        background: rgba(76, 175, 80, 0.3) !important;
+        color: #ffffff !important;
+    }
+    
+    .debug-category-header {
+        color: #ffffff !important;
+        border-bottom-color: #ffffff;
+    }
+}
+
+/*
+ * Reduced motion support for users sensitive to animations
+ */
+@media (prefers-reduced-motion: reduce) {
+    .debug-menu,
+    .debug-param-line,
+    .debug-controls-section,
+    .debug-status-warning,
+    .debug-status-error {
+        transition: none;
+        animation: none;
+    }
+}
+
+/* ==========================================================================
+    PRINT STYLES FOR MATHEMATICAL DOCUMENTATION
+   ========================================================================== */
+
+/*
+ * Print styles allow users to create physical documentation of their
+ * mathematical parameter configurations for reference or sharing
+ */
+@media print {
+    .debug-menu {
+        position: static;
+        background: white;
+        color: black;
+        width: 100%;
+        height: auto;
+        padding: 20px;
+    }
+    
+    .debug-param-current {
+        background: #f0f0f0 !important;
+        color: #000000 !important;
+    }
+    
+    .debug-category-header {
+        color: #000000 !important;
+        border-bottom: 2px solid #000000;
+    }
+}
