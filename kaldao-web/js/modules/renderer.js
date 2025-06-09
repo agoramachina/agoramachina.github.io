@@ -104,26 +104,28 @@ export class Renderer {
 
     // SHADER LOADING AND COMPILATION SYSTEM
     // This is where we bridge from external GLSL files to executable GPU code
-    async setupShaders() {
-        try {
-            // Load shader source code from external files
-            // This separation keeps our mathematical GLSL code organized and editable
-            const vertexShaderSource = await this.loadShader('./shaders/vertex.glsl');
-            const fragmentShaderSource = await this.loadShader('./shaders/fragment.glsl');
-            
-            // Compile individual shaders
-            const vertexShader = this.createShader(this.gl.VERTEX_SHADER, vertexShaderSource);
-            const fragmentShader = this.createShader(this.gl.FRAGMENT_SHADER, fragmentShaderSource);
-            
-            // Link shaders into a complete program
-            this.program = this.createProgram(vertexShader, fragmentShader);
-            
-            console.log('✅ Shaders compiled and linked successfully');
-            
-        } catch (error) {
-            console.warn('⚠️ External shader loading failed, using fallback shaders');
-            this.setupFallbackShaders();
+    async loadShader(url) {
+        // Try the original path first
+        const pathsToTry = [
+            url,                           // Original path
+            url.replace('../', './'),      // Adjusted for subfolder deployment
+            url.replace('../', '')         // Direct relative path
+        ];
+        
+        for (const path of pathsToTry) {
+            try {
+                const response = await fetch(path);
+                if (response.ok) {
+                    return await response.text();
+                }
+            } catch (error) {
+                console.warn(`Failed to load shader from ${path}, trying next path...`);
+            }
         }
+        
+        // If all paths fail, fall back to embedded shaders
+        console.warn(`All shader paths failed for ${url}, using fallback`);
+        throw new Error(`Failed to load shader: ${url}`);
     }
 
     // SHADER FILE LOADING WITH INTELLIGENT FALLBACK
