@@ -108,8 +108,8 @@ export class Renderer {
         try {
             // Load shader source code from external files
             // This separation keeps our mathematical GLSL code organized and editable
-            const vertexShaderSource = await this.loadShader('../shaders/vertex.glsl');
-            const fragmentShaderSource = await this.loadShader('../shaders/fragment.glsl');
+            const vertexShaderSource = await this.loadShader('./shaders/vertex.glsl');
+            const fragmentShaderSource = await this.loadShader('./shaders/fragment.glsl');
             
             // Compile individual shaders
             const vertexShader = this.createShader(this.gl.VERTEX_SHADER, vertexShaderSource);
