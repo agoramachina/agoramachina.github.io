@@ -104,6 +104,30 @@ export class Renderer {
 
     // SHADER LOADING AND COMPILATION SYSTEM
     // This is where we bridge from external GLSL files to executable GPU code
+    async setupShaders() {
+        try {
+            // Load shader source code from external files
+            // This separation keeps our mathematical GLSL code organized and editable
+            const vertexShaderSource = await this.loadShader('../shaders/vertex.glsl');
+            const fragmentShaderSource = await this.loadShader('../shaders/fragment.glsl');
+            
+            // Compile individual shaders
+            const vertexShader = this.createShader(this.gl.VERTEX_SHADER, vertexShaderSource);
+            const fragmentShader = this.createShader(this.gl.FRAGMENT_SHADER, fragmentShaderSource);
+            
+            // Link shaders into a complete program
+            this.program = this.createProgram(vertexShader, fragmentShader);
+            
+            console.log('✅ Shaders compiled and linked successfully');
+            
+        } catch (error) {
+            console.warn('⚠️ External shader loading failed, using fallback shaders');
+            this.setupFallbackShaders();
+        }
+    }
+
+    // SHADER FILE LOADING WITH INTELLIGENT FALLBACK
+    // This handles loading GLSL code from external files with graceful degradation
     async loadShader(url) {
         // Try the original path first
         const pathsToTry = [
@@ -126,25 +150,6 @@ export class Renderer {
         // If all paths fail, fall back to embedded shaders
         console.warn(`All shader paths failed for ${url}, using fallback`);
         throw new Error(`Failed to load shader: ${url}`);
-    }
-
-    // SHADER FILE LOADING WITH INTELLIGENT FALLBACK
-    // This handles loading GLSL code from external files with graceful degradation
-    async loadShader(url) {
-        try {
-            const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            
-            const source = await response.text();
-            console.log(`📜 Loaded shader: ${url} (${source.length} characters)`);
-            return source;
-            
-        } catch (error) {
-            console.error(`Failed to load shader from ${url}:`, error.message);
-            throw error;
-        }
     }
     
     // FALLBACK SHADER SYSTEM
