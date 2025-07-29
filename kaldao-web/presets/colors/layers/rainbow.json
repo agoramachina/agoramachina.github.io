@@ -1,0 +1,17 @@
+{
+  "name": "Rainbow",
+  "description": "Vibrant color palette for layer-based coloring",
+  "type": "layer",
+  "colors": [
+    "#FF0000",
+    "#FF8700",
+    "#FFD300",
+    "#DEFF0A",
+    "#A1FF0A",
+    "#0AFF99",
+    "#0AEFFF",
+    "#147DF5",
+    "#580AFF",
+    "#BE0AFF"
+  ]
+}

@@ -1,0 +1,405 @@
+/* Advanced Color Menu Styles
+ * This file contains all styling for the advanced color menu
+ * including palette preview, color mode controls, and component editor
+ */
+
+/* Main Color Menu - No Full Screen Overlay */
+#advancedColorOverlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(26, 26, 26, 0.95);
+    border: 2px solid #E91E63;
+    border-radius: 12px;
+    padding: 20px;
+    max-width: 90vw;
+    max-height: 90vh;
+    overflow-y: auto;
+    z-index: 10000;
+    font-family: 'Courier New', monospace;
+    color: #ffffff;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+/* Color Menu Content - No Additional Container Styling Needed */
+#advancedColorOverlay > div {
+    /* Styling moved to main container above */
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.7);
+    width: 900px;
+}
+
+/* Color Menu Header */
+.color-menu-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.color-menu-title {
+    color: #E91E63;
+    margin: 0;
+    font-size: 18px;
+}
+
+.color-menu-close {
+    background: #666;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-family: 'Courier New', monospace;
+}
+
+.color-menu-close:hover {
+    background: #777;
+}
+
+/* Two Column Layout */
+.color-menu-layout {
+    display: flex;
+    gap: 15px;
+    height: 80vh;
+}
+
+/* Left Column - Color Palettes + Preview */
+.color-menu-left {
+    flex: 0 0 380px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Right Column - Component Editor */
+.color-menu-right {
+    flex: 1;
+    background: rgba(40, 40, 40, 0.2);
+    border-radius: 6px;
+    padding: 15px;
+    border: 1px solid #444;
+    overflow: hidden;
+}
+
+/* Section Containers */
+.color-section {
+    background: rgba(40, 40, 40, 0.2);
+    border-radius: 6px;
+    padding: 12px;
+    border: 1px solid #444;
+}
+
+/* Section Headers */
+.color-section-header {
+    margin-bottom: 12px;
+    font-size: 14px;
+}
+
+.color-section-header.preview {
+    color: #4CAF50;
+}
+
+.color-section-header.mode {
+    color: #FF9800;
+}
+
+.color-section-header.manage {
+    color: #c41b83ff;
+}
+
+.color-section-header.editor {
+    color: #E91E63;
+}
+
+/* Palette Preview */
+#palettePreview {
+    height: 80px;
+    margin-bottom: 12px;
+    border: 2px solid #333;
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Palette Navigation */
+.palette-navigation {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.palette-nav-btn {
+    flex: 1;
+    padding: 6px;
+    background: #2196F3;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+}
+
+.palette-nav-btn:hover {
+    background: #1976D2;
+}
+
+.palette-index {
+    flex: 1;
+    text-align: center;
+    font-size: 12px;
+    line-height: 28px;
+}
+
+/* Palette Action Buttons */
+.palette-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.palette-action-btn {
+    padding: 6px;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+}
+
+.palette-action-btn.randomize {
+    background: #9C27B0;
+}
+
+.palette-action-btn.reset {
+    background: #F44336;
+}
+
+.palette-action-btn:hover {
+    opacity: 0.8;
+}
+
+/* Color Mode Controls */
+.color-mode-options {
+    margin-bottom: 10px;
+}
+
+.color-mode-label {
+    display: flex;
+    align-items: center;
+    font-size: 12px;
+    margin-bottom: 6px;
+}
+
+.color-mode-label input[type="radio"] {
+    margin-right: 8px;
+}
+
+.color-mode-divider {
+    margin-top: 12px;
+    padding-top: 8px;
+    border-top: 1px solid #555;
+}
+
+.invert-colors-label {
+    display: flex;
+    align-items: center;
+    font-size: 12px;
+    margin-bottom: 6px;
+}
+
+.invert-colors-label input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+/* Palette Selector */
+.palette-selector-container {
+    margin-bottom: 10px;
+}
+
+.palette-selector-label {
+    font-size: 11px;
+    color: #ccc;
+    margin-bottom: 4px;
+    display: block;
+}
+
+.palette-selector {
+    width: 100%;
+    padding: 6px;
+    background: #2a2a2a;
+    border: 1px solid #555;
+    color: #fff;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+}
+
+/* Color Management Controls */
+.color-management-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.color-management-btn {
+    padding: 6px;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+}
+
+.color-management-btn.load {
+    background: #2196F3;
+}
+
+.color-management-btn.save {
+    background: #4CAF50;
+}
+
+.color-management-btn.reset-all {
+    background: #F44336;
+}
+
+.color-management-btn.random-all {
+    background: #9C27B0;
+}
+
+.color-management-btn:hover {
+    opacity: 0.8;
+}
+
+/* Component Editor */
+.component-editor-description {
+    font-size: 11px;
+    color: #ccc;
+    margin-bottom: 15px;
+}
+
+#colorComponentEditor {
+    height: calc(100% - 80px);
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+/* Black & White Mode Display */
+.bw-mode-display {
+    text-align: center;
+    color: #666;
+    font-style: italic;
+    padding: 40px;
+}
+
+.bw-mode-icon {
+    font-size: 48px;
+    margin-bottom: 20px;
+}
+
+.bw-mode-text {
+    margin-bottom: 10px;
+}
+
+.bw-mode-hint {
+    font-size: 11px;
+    margin-top: 10px;
+}
+
+/* Color Component Sections */
+.color-component-section {
+    margin-bottom: 20px;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    border-left: 3px solid;
+}
+
+.color-component-section.offset {
+    border-left-color: #F44336;
+}
+
+.color-component-section.amplitude {
+    border-left-color: #4CAF50;
+}
+
+.color-component-section.frequency {
+    border-left-color: #2196F3;
+}
+
+.color-component-section.phase {
+    border-left-color: #FF9800;
+}
+
+.color-component-header {
+    color: #fff;
+    margin: 0 0 10px 0;
+    font-size: 12px;
+}
+
+.color-component-description {
+    color: #999;
+    font-size: 10px;
+    font-weight: normal;
+    margin-left: 8px;
+}
+
+/* Color Channel Controls */
+.color-channel-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 11px;
+}
+
+.color-channel-label {
+    width: 30px;
+}
+
+.color-channel-label.red {
+    color: #FF6B6B;
+}
+
+.color-channel-label.green {
+    color: #4CAF50;
+}
+
+.color-channel-label.blue {
+    color: #64B5F6;
+}
+
+.color-component-slider {
+    flex: 1;
+}
+
+.color-component-value {
+    width: 40px;
+    text-align: right;
+    font-family: monospace;
+}
+
+/* Scrollbar Styling for Webkit browsers */
+#colorComponentEditor::-webkit-scrollbar {
+    width: 6px;
+}
+
+#colorComponentEditor::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+}
+
+#colorComponentEditor::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 3px;
+}
+
+#colorComponentEditor::-webkit-scrollbar-thumb:hover {
+    background: #666;
+}

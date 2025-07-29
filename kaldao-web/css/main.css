@@ -35,7 +35,113 @@ body {
     color: #ffffff;
 }
 
-/* Mobile-specific styles */
+/* Prevent text selection on touch devices */
+.ui, .controls, .menu {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* ==========================================
+   UI COMPONENT STYLES
+   ========================================== */
+
+.ui { 
+    position: absolute; 
+    top: 20px; 
+    left: 20px; 
+    background: rgba(0,0,0,0.8); 
+    padding: 15px; 
+    border-radius: 8px; 
+    font-size: 14px; 
+    max-width: 400px; 
+    transition: opacity 0.3s ease; 
+    z-index: 100;
+}
+
+.controls { 
+    position: absolute; 
+    top: 20px; 
+    right: 20px; 
+    background: rgba(0,0,0,0.8); 
+    padding: 15px; 
+    border-radius: 8px; 
+    font-size: 12px; 
+    transition: opacity 0.3s ease; 
+    z-index: 100;
+}
+
+/* ==========================================
+   MENU AND OVERLAY STYLES
+   ========================================== */
+
+.menu { 
+    position: absolute; 
+    top: 50%; 
+    left: 50%; 
+    transform: translate(-50%, -50%); 
+    background: rgba(0,0,0,0.95); 
+    padding: 20px; 
+    border-radius: 12px; 
+    border: 2px solid #444; 
+    max-width: 95vw; 
+    max-height: 90vh; 
+    overflow-y: auto; 
+    z-index: 1000;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.menu h2 { 
+    color: #4CAF50; 
+    margin-bottom: 20px; 
+    text-align: center; 
+}
+
+.menu .section { 
+    margin-bottom: 15px; 
+}
+
+.menu .section h3 { 
+    color: #FFC107; 
+    margin-bottom: 8px; 
+}
+
+/* Artistic parameter line selection styles - matches debug menu behavior */
+.artistic-param-line {
+    cursor: pointer;
+    padding: 2px 0;
+    transition: all 0.2s ease;
+}
+
+.artistic-param-line.selected {
+    color: #4CAF50 !important;
+    font-weight: bold !important;
+    background: rgba(76, 175, 80, 0.1) !important;
+}
+
+.artistic-param-line.unselected {
+    color: #ffffff !important;
+    font-weight: normal !important;
+    background: transparent !important;
+}
+
+/* Desktop menu layout */
+.menu-desktop {
+    display: block;
+}
+
+.menu-mobile {
+    display: none;
+}
+
+/* ==========================================
+   MOBILE RESPONSIVE STYLES
+   ========================================== */
+
 @media (max-width: 768px) {
     body {
         touch-action: manipulation;
@@ -58,7 +164,83 @@ body {
     .menu-mobile { 
         display: block !important; /* Show mobile menu layout */
     }
+    
+    /* UI adjustments */
+    .ui { 
+        top: 10px; 
+        left: 10px; 
+        padding: 10px; 
+        font-size: 12px; 
+        max-width: calc(60vw - 20px);
+        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
+    }
+    
+    .ui h3 {
+        font-size: 14px;
+        margin-bottom: 8px;
+    }
+    
+    #status {
+        font-size: 11px;
+        line-height: 1.2;
+    }
+    
+    #currentParam {
+        font-size: 11px;
+        line-height: 1.2;
+        word-break: break-word;
+    }
+    
+    /* Menu adjustments */
+    .menu {
+        padding: 15px;
+        max-width: 90vw;
+        max-height: 85vh;
+        border-radius: 8px;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+    }
+    
+    .menu h2 {
+        font-size: 16px;
+        margin-bottom: 15px;
+    }
+    
+    /* Better touch targets */
+    .menu div[style*="font-size: 11px"] {
+        line-height: 1.4 !important;
+        padding: 2px 0;
+    }
 }
+
+/* ==========================================
+   TABLET RESPONSIVE STYLES
+   ========================================== */
+
+@media (min-width: 769px) and (max-width: 1024px) {
+    .ui {
+        max-width: 350px;
+        font-size: 13px;
+    }
+    
+    .controls {
+        font-size: 11px;
+    }
+    
+    .menu {
+        max-width: 85vw;
+        padding: 18px;
+    }
+    
+    .menu h2 {
+        font-size: 17px;
+    }
+}
+
+/* ==========================================
+   DESKTOP STYLES
+   ========================================== */
 
 @media (min-width: 769px) {
     .menu-desktop { 
@@ -68,14 +250,23 @@ body {
     .menu-mobile { 
         display: none; 
     }
-}
-
-/* Prevent text selection on touch devices */
-.ui, .controls, .menu {
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    -khtml-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
+    
+    /* Custom scrollbar for desktop */
+    .menu::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    .menu::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+    }
+    
+    .menu::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 4px;
+    }
+    
+    .menu::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.5);
+    }
 }

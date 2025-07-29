@@ -15,9 +15,9 @@ export class FileManager {
                 palette: {
                     currentPaletteIndex: this.app.currentPaletteIndex,
                     useColorPalette: this.app.useColorPalette,
-                    invertColors: this.app.invertColors,
-                    palettes: this.app.parameters.getPalettesState()
+                    invertColors: this.app.invertColors
                 },
+                audio: this.app.audioSystem ? this.app.audioSystem.getState() : null,
                 timeAccumulation: { ...this.app.parameters.timeAccumulation },
                 version: this.app.VERSION,
                 timestamp: new Date().toISOString(),
@@ -79,8 +79,10 @@ export class FileManager {
                         if (saveData.palette.invertColors !== undefined) {
                             this.app.invertColors = saveData.palette.invertColors;
                         }
-                        if (saveData.palette.palettes) {
-                            this.app.parameters.setPalettesState(saveData.palette.palettes);
+                        
+                        // Load audio settings
+                        if (saveData.audio && this.app.audioSystem) {
+                            this.app.audioSystem.setState(saveData.audio);
                         }
                         
                         // Load time accumulation if present
@@ -120,9 +122,9 @@ export class FileManager {
             palette: {
                 currentPaletteIndex: this.app.currentPaletteIndex,
                 useColorPalette: this.app.useColorPalette,
-                invertColors: this.app.invertColors,
-                palettes: this.app.parameters.getPalettesState()
+                invertColors: this.app.invertColors
             },
+            audio: this.app.audioSystem ? this.app.audioSystem.getState() : null,
             version: this.app.VERSION,
             timestamp: new Date().toISOString(),
             type: "preset"
@@ -164,9 +166,11 @@ export class FileManager {
                 if (presetData.palette.invertColors !== undefined) {
                     this.app.invertColors = presetData.palette.invertColors;
                 }
-                if (presetData.palette.palettes) {
-                    this.app.parameters.setPalettesState(presetData.palette.palettes);
-                }
+            }
+            
+            // Load audio settings
+            if (presetData.audio && this.app.audioSystem) {
+                this.app.audioSystem.setState(presetData.audio);
             }
             
             this.app.ui.updateDisplay();

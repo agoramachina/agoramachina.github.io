@@ -1,0 +1,19 @@
+{
+  "name": "Moody",
+  "description": "Rich colors for layer-based coloring",
+  "type": "layer",
+  "colors": [
+    "#8E24AA",
+    "#1976D2", 
+    "#00796B",
+    "#388E3C",
+    "#F57C00",
+    "#E64A19",
+    "#C62828",
+    "#AD1457",
+    "#6A1B9A",
+    "#4527A0",
+    "#D32F2F",
+    "#455A64"
+  ]
+}

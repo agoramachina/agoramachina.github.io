@@ -150,13 +150,13 @@ export class UIManager {
             
             // Movement & Animation
             paramsHTML += '<div style="color: #4CAF50; font-weight: bold; margin-bottom: 5px;">MOVEMENT & ANIMATION</div>';
-            const movementParams = ['fly_speed', 'rotation_speed', 'plane_rotation_speed', 'zoom_level'];
+            const movementParams = ['fly_speed', 'rotation_speed', 'plane_rotation_speed', 'zoom_level', 'color_speed'];
             movementParams.forEach(key => {
                 const param = this.app.parameters.getParameter(key);
                 const index = this.app.parameters.getParameterKeys().indexOf(key);
                 const isCurrent = index === this.app.currentParameterIndex;
-                const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : 'color: #ffffff;';
-                paramsHTML += `<div style="${style}">${param.name}: ${param.value.toFixed(3)}</div>`;
+                const selectionClass = isCurrent ? 'selected' : 'unselected';
+                paramsHTML += `<div class="artistic-param-line ${selectionClass}" data-param-key="${key}">${param.name}: ${param.value.toFixed(3)}</div>`;
             });
             
             paramsHTML += '<br>';
@@ -168,10 +168,10 @@ export class UIManager {
                 const param = this.app.parameters.getParameter(key);
                 const index = this.app.parameters.getParameterKeys().indexOf(key);
                 const isCurrent = index === this.app.currentParameterIndex;
-                const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : 'color: #ffffff;';
+                const selectionClass = isCurrent ? 'selected' : 'unselected';
                 const value = key === 'kaleidoscope_segments' || key === 'layer_count' ? 
                     param.value.toFixed(0) : param.value.toFixed(3);
-                paramsHTML += `<div style="${style}">${param.name}: ${value}</div>`;
+                paramsHTML += `<div class="artistic-param-line ${selectionClass}" data-param-key="${key}">${param.name}: ${value}</div>`;
             });
             
             paramsHTML += '<br>';
@@ -183,21 +183,8 @@ export class UIManager {
                 const param = this.app.parameters.getParameter(key);
                 const index = this.app.parameters.getParameterKeys().indexOf(key);
                 const isCurrent = index === this.app.currentParameterIndex;
-                const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : 'color: #ffffff;';
-                paramsHTML += `<div style="${style}">${param.name}: ${param.value.toFixed(3)}</div>`;
-            });
-            
-            paramsHTML += '<br>';
-            
-            // Color & Animation Speed
-            paramsHTML += '<div style="color: #FF5722; font-weight: bold; margin-bottom: 5px;">COLOR & SPEED</div>';
-            const colorParams = ['color_speed'];
-            colorParams.forEach(key => {
-                const param = this.app.parameters.getParameter(key);
-                const index = this.app.parameters.getParameterKeys().indexOf(key);
-                const isCurrent = index === this.app.currentParameterIndex;
-                const style = isCurrent ? 'color: #4CAF50; font-weight: bold;' : 'color: #ffffff;';
-                paramsHTML += `<div style="${style}">${param.name}: ${param.value.toFixed(3)}</div>`;
+                const selectionClass = isCurrent ? 'selected' : 'unselected';
+                paramsHTML += `<div class="artistic-param-line ${selectionClass}" data-param-key="${key}">${param.name}: ${param.value.toFixed(3)}</div>`;
             });
             
             return paramsHTML;
@@ -207,12 +194,14 @@ export class UIManager {
         const allParamsList = document.getElementById('allParametersList');
         if (allParamsList) {
             allParamsList.innerHTML = generateParametersHTML();
+            this.setupArtisticParameterInteraction();
         }
         
         // Update mobile parameters list
         const allParamsListMobile = document.getElementById('allParametersListMobile');
         if (allParamsListMobile) {
             allParamsListMobile.innerHTML = generateParametersHTML();
+            this.setupArtisticParameterInteraction();
         }
         
         // Update palettes list
@@ -234,14 +223,113 @@ export class UIManager {
         const allAudioStatus = document.getElementById('allAudioStatus');
         if (allAudioStatus) {
             if (this.app.audio.microphoneActive) {
-                allAudioStatus.innerHTML = '🎤 <span style="color: #4CAF50;">Microphone Active</span><br>🔊 Audio Reactive: ON<br><em>Press M to stop</em>';
+                allAudioStatus.innerHTML = '🎤 <span style="color: #4CAF50;">Microphone Active</span><br>🔊 Audio Reactive: ON<br><em>Press A to stop</em>';
             } else if (!this.app.audio.audioElement) {
-                allAudioStatus.innerHTML = '🎵 No audio file loaded<br>🎤 Microphone: OFF<br>🔊 Audio Reactive: OFF<br><em>Press A for file, M for mic</em>';
+                allAudioStatus.innerHTML = '🎵 No audio file loaded<br>🎤 Microphone: OFF<br>🔊 Audio Reactive: OFF<br><em>Press A for mic</em>';
             } else {
                 const playStatus = this.app.audio.audioPlaying ? '<span style="color: #4CAF50;">Playing</span>' : '<span style="color: #FF9800;">Paused</span>';
                 const reactiveStatus = this.app.audio.audioReactive ? '<span style="color: #4CAF50;">ON</span>' : '<span style="color: #FF9800;">OFF</span>';
-                allAudioStatus.innerHTML = `🎵 File: ${playStatus}<br>🎤 Microphone: OFF<br>🔊 Audio Reactive: ${reactiveStatus}<br><em>Press A to toggle, M for mic</em>`;
+                allAudioStatus.innerHTML = `🎵 File: ${playStatus}<br>🎤 Microphone: OFF<br>🔊 Audio Reactive: ${reactiveStatus}<br><em>Press A for mic</em>`;
             }
         }
+    }
+
+    // Set up click interaction for artistic parameters
+    setupArtisticParameterInteraction() {
+        const parameterLines = document.querySelectorAll('.artistic-param-line[data-param-key]');
+        
+        parameterLines.forEach(line => {
+            const paramKey = line.getAttribute('data-param-key');
+            
+            // Click to edit parameter value
+            line.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation(); // Prevent menu from closing
+                this.editArtisticParameterValue(paramKey, line);
+            });
+        });
+    }
+
+    // Edit artistic parameter value inline
+    editArtisticParameterValue(paramKey, lineElement) {
+        const param = this.app.parameters.getParameter(paramKey);
+        if (!param) return;
+        
+        const currentValue = param.value;
+        
+        // Create inline editor
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.value = currentValue;
+        input.min = param.min;
+        input.max = param.max;
+        input.step = param.step;
+        input.style.cssText = `
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid #4CAF50;
+            color: #ffffff;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            padding: 2px 4px;
+            border-radius: 2px;
+            width: 80px;
+            margin-left: 10px;
+        `;
+        
+        // Save reference to original content
+        const originalContent = lineElement.innerHTML;
+        
+        // Replace line content with editor
+        const paramName = param.name;
+        lineElement.innerHTML = `${paramName}: `;
+        lineElement.appendChild(input);
+        
+        // Focus and select all text
+        input.focus();
+        input.select();
+        
+        // Handle editing completion
+        const finishEdit = () => {
+            const newValue = parseFloat(input.value);
+            
+            if (!isNaN(newValue) && newValue >= param.min && newValue <= param.max) {
+                // Save state for undo
+                this.app.saveStateForUndo();
+                
+                // Update parameter value
+                this.app.parameters.setValue(paramKey, newValue);
+                
+                // Update current parameter index to match edited parameter
+                const index = this.app.parameters.getParameterKeys().indexOf(paramKey);
+                if (index !== -1) {
+                    this.app.currentParameterIndex = index;
+                }
+                
+                // Update displays
+                this.updateDisplay();
+                this.updateMenuDisplay();
+                
+                this.updateStatus(`${param.name} set to ${newValue.toFixed(3)}`, 'success');
+            } else {
+                // Invalid value, revert
+                lineElement.innerHTML = originalContent;
+                this.updateStatus(`Invalid value for ${param.name} (range: ${param.min} to ${param.max})`, 'error');
+            }
+        };
+        
+        // Handle keyboard events
+        input.addEventListener('keydown', (e) => {
+            e.stopPropagation(); // Prevent app key handlers from interfering
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                finishEdit();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                lineElement.innerHTML = originalContent;
+            }
+        });
+        
+        // Handle focus loss
+        input.addEventListener('blur', finishEdit);
     }
 }

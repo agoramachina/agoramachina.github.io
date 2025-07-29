@@ -16,6 +16,7 @@ import { Renderer } from './modules/renderer.js';
 import { UIManager } from './modules/ui.js';
 import { FileManager } from './modules/fileIO.js';
 import { DebugUIManager } from './modules/debug-ui.js'; // NEW: Mathematical exploration interface
+import { ColorManager } from './modules/color.js'; // NEW: Dedicated color system management
 
 class KaldaoApp {
     constructor() {
@@ -29,6 +30,7 @@ class KaldaoApp {
         this.ui = new UIManager();                    // Artistic interface management
         this.fileManager = new FileManager();         // State persistence and sharing
         this.debugUI = new DebugUIManager();          // Mathematical exploration interface
+        this.color = new ColorManager();              // Color system management
         
         // APPLICATION STATE MANAGEMENT
         // These variables track the current operational context and user preferences
@@ -46,6 +48,7 @@ class KaldaoApp {
         
         // NEW: Mathematical exploration state
         // This represents a parallel interface state for deep parameter exploration
+        this.debugMode = false;                       // Whether we're in debug mode (separate from menu visibility)
         this.debugMenuVisible = false;                // Whether mathematical parameter interface is active
         this.debugSessionStartTime = 0;               // When current debug session began (for analytics)
         this.debugParameterChangeCount = 0;           // How many mathematical changes made this session
@@ -78,16 +81,19 @@ class KaldaoApp {
             // The renderer must initialize first because it sets up the WebGL context
             // that other systems may need to query for capabilities
             await this.renderer.init();
+            this.renderer.app = this; // Give renderer access to app for color manager
             console.log('✅ Mathematical rendering engine initialized');
             
             // PHASE 2: Input and interface systems
             // These systems need to initialize after the renderer so they can
             // provide feedback about rendering capabilities and constraints
+            this.parameters.init(this);               // Parameter system needs app reference
             this.controls.init(this);                 // Context-sensitive input handling
             this.ui.init(this);                       // Artistic interface management
             this.audio.init(this);                    // Audio analysis system
             this.fileManager.init(this);              // State persistence system
             this.debugUI.init(this);                  // Mathematical exploration interface
+            await this.color.init(this);              // Color system management (async for preset loading)
             console.log('✅ All interface and control systems initialized');
             
             // PHASE 3: System integration and event handling
@@ -233,9 +239,16 @@ class KaldaoApp {
     // This is the heart of the application - the continuous cycle that updates mathematics and renders visuals
     // The rendering loop must handle both artistic expression and mathematical exploration seamlessly
     startRenderLoop() {
-        const render = () => {
+        let lastFrameTimestamp = performance.now();
+        
+        const render = (currentTimestamp) => {
             try {
                 const frameStartTime = performance.now();
+                
+                // Calculate actual time between frames (this is true FPS measurement)
+                const actualFrameTime = currentTimestamp - lastFrameTimestamp;
+                lastFrameTimestamp = currentTimestamp;
+                
                 const deltaTime = 1.0 / 60.0; // Target 60 FPS for smooth mathematical animation
                 
                 // MATHEMATICAL STATE UPDATES
@@ -267,8 +280,8 @@ class KaldaoApp {
                 // PERFORMANCE TRACKING
                 // Monitor performance to help users understand the computational cost of their mathematical choices
                 const frameEndTime = performance.now();
-                const frameTime = frameEndTime - frameStartTime;
-                this.updatePerformanceMetrics(frameTime);
+                const jsExecutionTime = frameEndTime - frameStartTime;
+                this.updatePerformanceMetrics(jsExecutionTime, actualFrameTime);
                 
                 // Continue the rendering loop
                 requestAnimationFrame(render);
@@ -290,14 +303,32 @@ class KaldaoApp {
     
     // PERFORMANCE METRICS TRACKING
     // This helps users understand the computational complexity of their mathematical explorations
-    updatePerformanceMetrics(frameTime) {
+    updatePerformanceMetrics(jsExecutionTime, actualFrameTime = null) {
         this.performanceMetrics.frameCount++;
-        this.performanceMetrics.lastFrameTime = frameTime;
+        this.performanceMetrics.lastFrameTime = jsExecutionTime;
+        
+        // Use actual frame time if provided, otherwise fall back to JS execution time
+        const frameTimeForFPS = actualFrameTime || jsExecutionTime;
+        
+        // Debug performance measurements with more detail (controlled by debug settings)
+        if (this.performanceMetrics.frameCount % 60 === 0 && this.debugUI && this.debugUI.shouldLog('performanceFrames')) {
+            if (actualFrameTime) {
+                const instantFPS = Math.round(1000 / actualFrameTime);
+                const avgFPS = Math.round(1000 / this.performanceMetrics.averageFrameTime);
+                console.log(`🎬 Frame #${this.performanceMetrics.frameCount}:`);
+                console.log(`   📊 JS Time: ${jsExecutionTime.toFixed(3)}ms`);
+                console.log(`   ⏱️  Actual Frame Time: ${actualFrameTime.toFixed(3)}ms (${instantFPS} FPS instant)`);
+                console.log(`   📈 Rolling Average: ${this.performanceMetrics.averageFrameTime.toFixed(3)}ms (${avgFPS} FPS avg)`);
+                console.log(`   🎯 Frame Time Breakdown: JS(${jsExecutionTime.toFixed(1)}ms) + GPU+VSync(${(actualFrameTime-jsExecutionTime).toFixed(1)}ms)`);
+            } else {
+                console.log(`Frame #${this.performanceMetrics.frameCount}: frameTime=${jsExecutionTime.toFixed(3)}ms, avgFrameTime=${this.performanceMetrics.averageFrameTime.toFixed(3)}ms, estimatedFPS=${Math.round(1000 / this.performanceMetrics.averageFrameTime)}`);
+            }
+        }
         
         // Calculate rolling average for smooth performance indicators
         const alpha = 0.1; // Smoothing factor
         this.performanceMetrics.averageFrameTime = 
-            alpha * frameTime + (1 - alpha) * this.performanceMetrics.averageFrameTime;
+            alpha * frameTimeForFPS + (1 - alpha) * this.performanceMetrics.averageFrameTime;
     }
     
     // ENHANCED STATE MANAGEMENT SYSTEM

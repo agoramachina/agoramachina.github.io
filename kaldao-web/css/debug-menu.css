@@ -39,7 +39,6 @@
         rgba(0, 0, 0, 0.98) 0%, 
         rgba(20, 20, 30, 0.98) 50%, 
         rgba(0, 0, 0, 0.98) 100%);
-    backdrop-filter: blur(2px);         /* Subtle blur adds depth and focus */
     
     /* Typography foundation for mathematical precision */
     font-family: 'Courier New', 'Monaco', 'Lucida Console', monospace;
@@ -87,7 +86,7 @@
     letter-spacing: 0.5px;                  /* Improve readability at small sizes */
     
     /* Scrolling behavior for parameter lists longer than viewport */
-    max-height: calc(90vh - 100px);          /* Leave room for headers and controls */
+    max-height: calc(92vh - 80px);           /* Increased height to fit more parameters */
     overflow-y: auto;                        /* Enable scrolling when needed */
     
     /* Custom scrollbar styling for professional appearance */
@@ -143,6 +142,16 @@
     text-transform: uppercase;
 }
 
+/* Artistic parameters category special styling */
+.debug-category-header.artistic-category {
+    color: #4CAF50 !important;
+}
+
+/* Parameter value hover effect */
+.param-value-hover {
+    background-color: rgba(76, 175, 80, 0.2) !important;
+}
+
 /*
  * Individual parameter lines create the core interaction surface for mathematical exploration.
  * The design supports rapid scanning, precise value reading, and clear indication of
@@ -158,6 +167,10 @@
     padding: 2px 6px;
     border-radius: 3px;
     
+    /* Flexbox layout for consistent alignment */
+    display: flex !important;
+    align-items: center !important;
+    
     /* Preserve formatting for perfect parameter value alignment */
     white-space: pre !important;
     
@@ -168,14 +181,29 @@
     cursor: default;
 }
 
-/*
- * Current parameter highlighting creates clear visual focus during mathematical exploration.
- * The highlighting needs to be obvious enough to guide attention but not so bright
- * that it becomes distracting during extended use.
- */
-.debug-param-current,
-.debug-param-line[style*="color: #4CAF50"] {
-    color: #4CAF50 !important;             /* Green indicates current selection */
+/* Ensure parameter name spans maintain consistent width */
+.debug-param-line .param-name {
+    flex: 0 0 180px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+}
+
+/* Ensure parameter value spans maintain consistent width */
+.debug-param-line .param-value {
+    flex: 0 0 70px !important;
+    text-align: right !important;
+    white-space: nowrap !important;
+}
+
+/* Ensure parameter sliders maintain consistent width */
+.debug-param-line .param-slider {
+    flex: 0 0 120px !important;
+    margin-left: 10px !important;
+}
+
+/* Selection states - these override inline styles safely */
+.debug-param-line.selected {
+    color: #4CAF50 !important;
     font-weight: bold !important;
     
     /* Background highlight creates area of focus */
@@ -183,15 +211,24 @@
         rgba(76, 175, 80, 0.15) 0%, 
         rgba(76, 175, 80, 0.08) 100%) !important;
     
-    /* Subtle border reinforces selection */
-    border-left: 3px solid #4CAF50;
+    /* Use inset border to avoid width expansion */
+    box-shadow: inset 3px 0 0 0 #4CAF50, inset 0 0 0 1px rgba(76, 175, 80, 0.2) !important;
     
-    /* Enhanced visual treatment for current parameter */
-    box-shadow: inset 0 0 0 1px rgba(76, 175, 80, 0.2);
-    
-    /* Slight scale creates depth without disrupting layout */
-    transform: translateX(2px);
+    /* Remove transform to prevent width issues */
 }
+
+.debug-param-line.unselected {
+    color: #ffffff !important;
+    font-weight: normal !important;
+    background: transparent !important;
+}
+
+/*
+ * Current parameter highlighting creates clear visual focus during mathematical exploration.
+ * The highlighting needs to be obvious enough to guide attention but not so bright
+ * that it becomes distracting during extended use.
+ */
+/* Removed conflicting debug-param-current rules - using .selected instead */
 
 /*
  * Modified parameter indication helps users track which mathematical values
@@ -327,6 +364,19 @@
         break-inside: avoid;                /* Keep categories intact across columns */
         break-after: avoid;
     }
+    
+    /* Keep parameter groups together within categories */
+    .debug-param-line {
+        break-inside: avoid;                /* Prevent breaking individual parameter lines */
+    }
+    
+    /* Create a wrapper for each category to keep it together */
+    .debug-category-wrapper {
+        break-inside: avoid;                /* Keep entire category together */
+        display: inline-block;              /* Ensure proper column breaking behavior */
+        width: 100%;
+        margin-bottom: 10px;
+    }
 }
 
 /*
@@ -381,10 +431,9 @@
         margin: 15px 0 8px 0 !important;
     }
     
-    /* Enhanced current parameter visibility on mobile */
-    .debug-param-current {
-        border-left-width: 4px;
-        transform: translateX(3px);
+    /* Enhanced selected parameter visibility on mobile */
+    .debug-param-line.selected {
+        box-shadow: inset 4px 0 0 0 #4CAF50, inset 0 0 0 1px rgba(76, 175, 80, 0.2) !important;
     }
 }
 
@@ -420,10 +469,147 @@
  * Hover states for mouse-based mathematical exploration
  * Subtle feedback helps users understand interactive elements
  */
-.debug-param-line:hover:not(.debug-param-current) {
+.debug-param-line:hover:not(.selected) {
     background: rgba(255, 255, 255, 0.05);
-    border-left: 2px solid rgba(255, 255, 255, 0.2);
-    transform: translateX(1px);
+    box-shadow: inset 2px 0 0 0 rgba(255, 255, 255, 0.2);
+}
+
+/* Disable transitions during keyboard navigation to prevent animation re-triggering */
+/* This preserves the hover state but prevents the animation from playing */
+#debugParametersList.keyboard-navigation .debug-param-line {
+    transition: none !important;
+}
+
+/* Disable hover effects when parameter value is being edited */
+.debug-param-line:has(input) {
+    transition: none !important;
+}
+
+.debug-param-line:has(input):hover {
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.param-value:has(input) {
+    background-color: transparent !important;
+}
+
+.param-value:has(input):hover {
+    background-color: transparent !important;
+}
+
+/* ==========================================================================
+   PARAMETER SLIDERS
+   ========================================================================== */
+
+/*
+ * Parameter sliders provide visual feedback about parameter ranges and allow
+ * intuitive mouse-based adjustment alongside keyboard controls
+ */
+.param-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+    outline: none;
+    margin: 0 5px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.param-slider:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Slider thumb styling */
+.param-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #4CAF50;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid rgba(76, 175, 80, 0.8);
+}
+
+.param-slider::-webkit-slider-thumb:hover {
+    background: #66BB6A;
+    transform: scale(1.1);
+    box-shadow: 0 0 8px rgba(76, 175, 80, 0.4);
+}
+
+.param-slider::-webkit-slider-thumb:active {
+    transform: scale(1.2);
+    box-shadow: 0 0 12px rgba(76, 175, 80, 0.6);
+}
+
+/* Firefox slider thumb */
+.param-slider::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #4CAF50;
+    cursor: pointer;
+    border: 1px solid rgba(76, 175, 80, 0.8);
+    transition: all 0.2s ease;
+}
+
+.param-slider::-moz-range-thumb:hover {
+    background: #66BB6A;
+    transform: scale(1.1);
+    box-shadow: 0 0 8px rgba(76, 175, 80, 0.4);
+}
+
+.param-slider::-moz-range-thumb:active {
+    transform: scale(1.2);
+    box-shadow: 0 0 12px rgba(76, 175, 80, 0.6);
+}
+
+/* Firefox slider track */
+.param-slider::-moz-range-track {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+    border: none;
+}
+
+/* Selected parameter slider highlighting */
+.debug-param-line.selected .param-slider {
+    background: rgba(76, 175, 80, 0.3);
+}
+
+.debug-param-line.selected .param-slider::-webkit-slider-thumb {
+    background: #4CAF50;
+    border-color: #4CAF50;
+    box-shadow: 0 0 6px rgba(76, 175, 80, 0.4);
+}
+
+.debug-param-line.selected .param-slider::-moz-range-thumb {
+    background: #4CAF50;
+    border-color: #4CAF50;
+    box-shadow: 0 0 6px rgba(76, 175, 80, 0.4);
+}
+
+/* Reduce slider interactions during keyboard navigation but allow dragging */
+#debugParametersList.keyboard-navigation .param-slider {
+    /* Don't disable sliders during keyboard navigation - users should be able to use both */
+}
+
+/* Slider focus states for accessibility */
+.param-slider:focus {
+    outline: 2px solid rgba(76, 175, 80, 0.6);
+    outline-offset: 2px;
+}
+
+.param-slider:focus::-webkit-slider-thumb {
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.6);
+}
+
+.param-slider:focus::-moz-range-thumb {
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.6);
 }
 
 /* ==========================================================================
@@ -483,7 +669,7 @@
         color: #ffffff;
     }
     
-    .debug-param-current {
+    .debug-param-line.selected {
         background: rgba(76, 175, 80, 0.3) !important;
         color: #ffffff !important;
     }
@@ -526,7 +712,7 @@
         padding: 20px;
     }
     
-    .debug-param-current {
+    .debug-param-line.selected {
         background: #f0f0f0 !important;
         color: #000000 !important;
     }

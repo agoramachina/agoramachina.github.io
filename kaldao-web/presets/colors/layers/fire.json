@@ -1,0 +1,17 @@
+{
+  "name": "Fire",
+  "description": "Smoldering color palette for layer-based coloring",
+  "type": "layer",
+  "colors": [
+    "#03071E",
+    "#370617",
+    "#6A040F",
+    "#9D0208",
+    "#D00000",
+    "#DC2F02",
+    "#E85D04",
+    "#F48C06",
+    "#FAA307",
+    "#FFBA08"
+  ]
+}

@@ -1,0 +1,225 @@
+{
+  "parameters": {
+    "fly_speed": 0.25,
+    "contrast": 1,
+    "kaleidoscope_segments": 10,
+    "truchet_radius": 0.35,
+    "center_fill_radius": 0,
+    "layer_count": 6,
+    "rotation_speed": 0.025,
+    "zoom_level": 0.3,
+    "color_intensity": 1,
+    "plane_rotation_speed": 0.5,
+    "camera_tilt_x": 0,
+    "camera_tilt_y": 0,
+    "camera_roll": 0,
+    "path_stability": 1,
+    "path_scale": 1,
+    "color_speed": 0.5,
+    "layer_distance": 0.75,
+    "layer_fade_start": 5,
+    "layer_fade_near": 0.1,
+    "layer_alpha_base": 0.5,
+    "layer_alpha_range": 0.5,
+    "layer_cutoff": 0.95,
+    "path_freq_primary": 1.414,
+    "path_freq_secondary": 0.866,
+    "path_freq_tertiary": 0.707,
+    "path_amplitude": 0.075,
+    "kaleidoscope_smoothing": 0.05,
+    "kaleidoscope_smooth_scale": 20,
+    "pattern_threshold_full": 0.85,
+    "pattern_threshold_partial_a": 0.5,
+    "pattern_threshold_partial_b": 0.15,
+    "pattern_offset_scale": 1000,
+    "pattern_base_offset": 0.5,
+    "hash_seed_rotation": 1777,
+    "hash_seed_offset": 2087,
+    "hash_seed_speed": 3499,
+    "fov_base": 2,
+    "fov_distortion": 1,
+    "perspective_curve": 0.33,
+    "aa_multiplier": 3,
+    "line_width_base": 0.025,
+    "detail_frequency": 100,
+    "truchet_diagonal_threshold": 0.707,
+    "use_layer_colors": 0,
+    "color_mode": 0
+  },
+  "palette": {
+    "currentPaletteIndex": 0,
+    "useColorPalette": false,
+    "invertColors": false,
+    "palettes": [
+      {
+        "name": "B&W",
+        "a": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "b": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "c": [
+          1,
+          1,
+          1
+        ],
+        "d": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "Rainbow",
+        "a": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "b": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "c": [
+          1,
+          1,
+          1
+        ],
+        "d": [
+          0,
+          0.33,
+          0.67
+        ]
+      },
+      {
+        "name": "Fire",
+        "a": [
+          0.5,
+          0.2,
+          0.1
+        ],
+        "b": [
+          0.5,
+          0.3,
+          0.2
+        ],
+        "c": [
+          2,
+          1,
+          0.5
+        ],
+        "d": [
+          0,
+          0.25,
+          0.5
+        ]
+      },
+      {
+        "name": "Ocean",
+        "a": [
+          0.2,
+          0.5,
+          0.8
+        ],
+        "b": [
+          0.2,
+          0.3,
+          0.5
+        ],
+        "c": [
+          1,
+          1.5,
+          2
+        ],
+        "d": [
+          0,
+          0.2,
+          0.5
+        ]
+      },
+      {
+        "name": "Purple",
+        "a": [
+          0.8,
+          0.5,
+          0.4
+        ],
+        "b": [
+          0.2,
+          0.4,
+          0.2
+        ],
+        "c": [
+          2,
+          1,
+          1
+        ],
+        "d": [
+          0,
+          0.25,
+          0.25
+        ]
+      },
+      {
+        "name": "Neon",
+        "a": [
+          0.2,
+          0.2,
+          0.2
+        ],
+        "b": [
+          0.8,
+          0.8,
+          0.8
+        ],
+        "c": [
+          1,
+          2,
+          1.5
+        ],
+        "d": [
+          0,
+          0.5,
+          0.8
+        ]
+      },
+      {
+        "name": "Sunset",
+        "a": [
+          0.7,
+          0.3,
+          0.2
+        ],
+        "b": [
+          0.3,
+          0.2,
+          0.1
+        ],
+        "c": [
+          1.5,
+          1,
+          0.8
+        ],
+        "d": [
+          0,
+          0.1,
+          0.3
+        ]
+      }
+    ]
+  },
+  "timeAccumulation": {
+    "camera_position": 40.754166666672134,
+    "rotation_time": 4.07541666666702,
+    "plane_rotation_time": 81.50833333334427,
+    "color_time": 81.50833333334427
+  },
+  "timestamp": "2025-07-29T02:58:47.804Z",
+  "description": "Kaldao Fractal Visualizer Parameters"
+}

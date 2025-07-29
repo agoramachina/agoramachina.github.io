@@ -1,0 +1,17 @@
+{
+  "name": "Pride",
+  "description": "Symbolic colors for layer-based coloring",
+  "type": "layer",
+  "colors": [
+    "#55CDFC",
+    "#F7A8B8", 
+    "#000000",
+    "#794E10",
+    "#E50000",
+    "#FF8D00",
+    "#FFEE00",
+    "#008121",
+    "#004CFF",
+    "#760188"
+  ]
+}

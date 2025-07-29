@@ -8,27 +8,42 @@ export class DebugUIManager {
         this.currentDebugParameterIndex = 0;
         this.allDebugKeys = []; // Flattened list of all debug parameter keys for navigation
         this.parameterModificationCount = 0; // Track how many debug params have been modified
+        this.keyboardNavigationActive = false; // Track if we're currently navigating with keyboard
+        this.keyboardNavigationTimeout = null; // Timeout to reset keyboard navigation flag
+        
+        // Debug logging menu state
+        this.debugLoggingMenuVisible = false;
+        
+        // Debug logging settings - control what gets logged to console
+        this.debugLogging = {
+            audioLevels: false,      // 🎤 Audio level analysis
+            audioRawData: false,     // 🎤 Raw audio data values
+            audioEffects: false,     // 🎨 Which parameters audio affects
+            performanceFrames: false, // 🎬 Frame performance every 60 frames
+            microphoneSetup: true,   // 🎤 Microphone initialization info
+            parameterChanges: false, // 📊 Parameter value changes
+            systemStatus: false      // 🔧 System diagnostics
+        };
     }
 
     init(app) {
         this.app = app;
         this.buildDebugParameterList();
-        console.log('Debug UI Manager initialized with', this.allDebugKeys.length, 'debug parameters');
+        console.log('Debug UI Manager initialized with', this.allDebugKeys.length, 'total parameters (artistic + debug)');
     }
 
-    // Build a flat list of debug parameter keys for navigation
+    // Build a flat list of ALL parameter keys for navigation (artistic + debug)
     // This creates a single array we can navigate through with arrow keys
     buildDebugParameterList() {
-        const categories = this.app.parameters.getDebugParameterCategories();
         this.allDebugKeys = [];
         
-        // Flatten all debug parameters while maintaining category order
-        // This gives us predictable navigation through related parameters
+        // Add all parameters organized by category (includes artistic parameters as first category)
+        const categories = this.app.parameters.getDebugParameterCategories();
         Object.keys(categories).forEach(categoryName => {
             this.allDebugKeys.push(...categories[categoryName]);
         });
 
-        console.log('Debug parameter navigation order:', this.allDebugKeys);
+        console.log('Debug parameter navigation order (unified categories):', this.allDebugKeys);
     }
 
     // Toggle debug menu visibility
@@ -51,6 +66,11 @@ export class DebugUIManager {
             // Update the debug display with current parameter values
             this.updateDebugMenuDisplay();
             
+            // Start real-time system status monitoring
+            this.startSystemStatusUpdates();
+            this.updateSystemStatus(); // Initial update
+            
+            
             // Provide user feedback about entering debug mode
             this.app.ui.updateStatus('DEBUG MODE: Use ↑/↓ to navigate, ←/→ to adjust', 'info');
         } else {
@@ -58,6 +78,11 @@ export class DebugUIManager {
             debugMenu.classList.add('hidden');
             ui.classList.remove('hidden');
             controls.classList.remove('hidden');
+            
+            // Stop system status monitoring
+            this.stopSystemStatusUpdates();
+            
+            
             
             // Update normal UI to reflect any changes made in debug mode
             this.app.ui.updateDisplay();
@@ -70,9 +95,34 @@ export class DebugUIManager {
     switchDebugParameter(delta) {
         if (this.allDebugKeys.length === 0) return;
         
+        // Set keyboard navigation flag to prevent mouse interference
+        this.keyboardNavigationActive = true;
+        
+        // Add CSS class to disable hover effects during keyboard navigation
+        const debugParamsList = document.getElementById('debugParametersList');
+        if (debugParamsList) {
+            debugParamsList.classList.add('keyboard-navigation');
+        }
+        
+        // Clear any existing timeout
+        if (this.keyboardNavigationTimeout) {
+            clearTimeout(this.keyboardNavigationTimeout);
+        }
+        
+        // Reset flag after a short delay to allow mouse interaction again
+        this.keyboardNavigationTimeout = setTimeout(() => {
+            this.keyboardNavigationActive = false;
+            // Remove CSS class to re-enable hover effects
+            if (debugParamsList) {
+                debugParamsList.classList.remove('keyboard-navigation');
+            }
+        }, 500); // Slightly longer timeout to ensure hover effects don't interfere
+        
         // Wrap around at the ends of the list for continuous navigation
         this.currentDebugParameterIndex = (this.currentDebugParameterIndex + delta + this.allDebugKeys.length) % this.allDebugKeys.length;
-        this.updateDebugMenuDisplay();
+        
+        // Use lightweight selection update instead of full HTML rebuild
+        this.updateSelectionOnly();
         
         // Provide immediate feedback about which parameter is now selected
         const currentKey = this.allDebugKeys[this.currentDebugParameterIndex];
@@ -84,6 +134,29 @@ export class DebugUIManager {
     // This is where the mathematical magic happens - we're directly modifying shader behavior
     adjustDebugParameter(delta) {
         if (this.allDebugKeys.length === 0) return;
+        
+        // Set keyboard navigation flag to prevent mouse interference during value adjustment
+        this.keyboardNavigationActive = true;
+        
+        // Add CSS class to disable hover effects during keyboard value adjustment
+        const debugParamsList = document.getElementById('debugParametersList');
+        if (debugParamsList) {
+            debugParamsList.classList.add('keyboard-navigation');
+        }
+        
+        // Clear any existing timeout
+        if (this.keyboardNavigationTimeout) {
+            clearTimeout(this.keyboardNavigationTimeout);
+        }
+        
+        // Reset flag after a short delay to allow mouse interaction again
+        this.keyboardNavigationTimeout = setTimeout(() => {
+            this.keyboardNavigationActive = false;
+            // Remove CSS class to re-enable hover effects
+            if (debugParamsList) {
+                debugParamsList.classList.remove('keyboard-navigation');
+            }
+        }, 500); // Same timeout as navigation
         
         // Save state for undo before making any changes
         // This is crucial because debug parameter changes can have dramatic effects
@@ -102,8 +175,11 @@ export class DebugUIManager {
             this.parameterModificationCount++;
         }
         
-        // Update the display to show the new value
-        this.updateDebugMenuDisplay();
+        // Update the display to show the new value using lightweight update
+        this.updateSelectionOnly();
+        
+        // Update system status to reflect parameter change
+        this.updateSystemStatus();
         
         // Provide detailed feedback about the change
         const param = this.app.parameters.getParameter(paramKey);
@@ -113,36 +189,130 @@ export class DebugUIManager {
     // ENHANCEMENT: Set up mouse interaction for parameter selection and editing
     setupMouseInteraction() {
         const parameterLines = document.querySelectorAll('.debug-param-line[data-param-key]');
+        const parameterValues = document.querySelectorAll('.param-value[data-param-key]');
+        const parameterSliders = document.querySelectorAll('.param-slider[data-param-key]');
+        
+        console.log('Debug: setupMouseInteraction found:', {
+            lines: parameterLines.length,
+            values: parameterValues.length,
+            sliders: parameterSliders.length
+        });
         
         parameterLines.forEach(line => {
             const paramKey = line.getAttribute('data-param-key');
             const paramType = line.getAttribute('data-param-type');
             
-            // Click to select parameter
+            // Click to select parameter (only if not in keyboard navigation mode)
             line.addEventListener('click', (e) => {
+                // Don't select if clicking on the value span (that's for editing)
+                if (e.target.classList.contains('param-value')) return;
+                
                 e.preventDefault();
-                this.selectParameterByKey(paramKey, paramType);
+                if (!this.keyboardNavigationActive) {
+                    this.selectParameterByKey(paramKey, paramType);
+                }
             });
             
-            // Double-click to edit parameter value
+            // Double-click to edit parameter value (only if not in keyboard navigation mode)
             line.addEventListener('dblclick', (e) => {
                 e.preventDefault();
-                this.editParameterValue(paramKey, line);
+                if (!this.keyboardNavigationActive) {
+                    this.editParameterValue(paramKey, line);
+                }
+            });
+            
+            // Prevent mouse hover effects during keyboard navigation
+            line.addEventListener('mouseenter', (e) => {
+                if (this.keyboardNavigationActive) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
             });
         });
+        
+        // Add click handlers for parameter values
+        parameterValues.forEach(valueSpan => {
+            const paramKey = valueSpan.getAttribute('data-param-key');
+            
+            valueSpan.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation(); // Prevent line selection
+                if (!this.keyboardNavigationActive) {
+                    this.editParameterValue(paramKey, valueSpan.parentElement);
+                }
+            });
+            
+            // Add visual feedback for clickable values using CSS classes only
+            valueSpan.addEventListener('mouseenter', (e) => {
+                if (!this.keyboardNavigationActive) {
+                    valueSpan.classList.add('param-value-hover');
+                }
+            });
+            
+            valueSpan.addEventListener('mouseleave', (e) => {
+                valueSpan.classList.remove('param-value-hover');
+            });
+        });
+        
+        // Add minimal event handlers to test basic slider functionality
+        console.log('Debug: Attempting to add event handlers to', parameterSliders.length, 'sliders');
+        
+        parameterSliders.forEach((slider, index) => {
+            const paramKey = slider.getAttribute('data-param-key');
+            console.log(`Debug: Setting up slider ${index} for parameter "${paramKey}"`);
+            
+            // Test if slider element is accessible
+            console.log('Debug: Slider element:', slider, 'disabled?', slider.disabled, 'readonly?', slider.readOnly);
+            
+            // Update parameter when slider moves
+            slider.addEventListener('input', function(e) {
+                console.log('SUCCESS: Slider input event fired!', paramKey, e.target.value);
+                const newValue = parseFloat(e.target.value);
+                this.app.parameters.setValue(paramKey, newValue);
+            }.bind(this));
+            
+            slider.addEventListener('click', function(e) {
+                console.log('SUCCESS: Slider click event fired!', paramKey);
+            });
+            
+            slider.addEventListener('mousedown', function(e) {
+                console.log('SUCCESS: Slider mousedown event fired!', paramKey);
+            });
+        });
+    }
+    
+    // Helper method to format parameter values with minimum 2 decimal places
+    formatParameterValue(value, step) {
+        // Determine appropriate decimal places based on step size, minimum 2
+        let decimalPlaces;
+        if (step >= 1.0) {
+            decimalPlaces = 2; // Minimum 2 even for whole numbers (e.g., 5.00)
+        } else if (step >= 0.1) {
+            decimalPlaces = 2; // 2 decimal places (e.g., 1.50)
+        } else if (step >= 0.01) {
+            decimalPlaces = 2; // 2 decimal places (e.g., 0.50)
+        } else if (step >= 0.001) {
+            decimalPlaces = 3; // 3 decimal places for smaller steps (e.g., 0.125)
+        } else if (step >= 0.0001) {
+            decimalPlaces = 4; // 4 decimal places for very small steps
+        } else {
+            decimalPlaces = 5; // 5 decimal places for tiny steps
+        }
+        
+        return value.toFixed(decimalPlaces);
     }
     
     // ENHANCEMENT: Select a parameter by its key (for mouse interaction)
     selectParameterByKey(paramKey, paramType) {
         if (paramType === 'artistic') {
-            // Switch to normal mode and select artistic parameter
-            if (this.app.debugMenuVisible) {
-                this.app.debugUI.toggleDebugMenu(); // Exit debug mode
-            }
-            const index = this.app.parameters.parameterKeys.indexOf(paramKey);
+            // Select artistic parameter in debug mode (don't close menu)
+            const index = this.allDebugKeys.indexOf(paramKey);
             if (index !== -1) {
-                this.app.currentParameterIndex = index;
-                this.app.ui.updateDisplay();
+                this.currentDebugParameterIndex = index;
+                this.updateDebugMenuDisplay();
+                
+                const param = this.app.parameters.getParameter(paramKey);
+                this.app.ui.updateStatus(`Selected: ${param.name}`, 'info');
             }
         } else {
             // Select debug parameter
@@ -162,7 +332,14 @@ export class DebugUIManager {
         const param = this.app.parameters.getParameter(paramKey);
         if (!param) return;
         
+        // Find the value span within the line element
+        const valueSpan = lineElement.querySelector('.param-value[data-param-key="' + paramKey + '"]');
+        if (!valueSpan) return;
+        
         const currentValue = param.value;
+        
+        // Store original content for restoration
+        const originalContent = valueSpan.textContent;
         
         // Create inline editor
         const input = document.createElement('input');
@@ -177,19 +354,15 @@ export class DebugUIManager {
             color: #ffffff;
             font-family: 'Courier New', monospace;
             font-size: 11px;
-            padding: 2px 4px;
+            padding: 1px 3px;
             border-radius: 2px;
-            width: 80px;
-            margin-left: 10px;
+            width: 70px;
+            text-align: right;
         `;
         
-        // Save reference to original content
-        const originalContent = lineElement.innerHTML;
-        
-        // Replace line content with editor
-        const paramName = param.name.padEnd(26);
-        lineElement.innerHTML = `${paramName}: `;
-        lineElement.appendChild(input);
+        // Replace value span content with editor
+        valueSpan.innerHTML = '';
+        valueSpan.appendChild(input);
         
         // Focus and select all text
         input.focus();
@@ -206,28 +379,42 @@ export class DebugUIManager {
                 // Update parameter value
                 this.app.parameters.setValue(paramKey, newValue);
                 
-                // Update displays
-                this.updateDebugMenuDisplay();
+                // Restore the value span with new value using consistent formatting
+                let displayValue = this.formatParameterValue(newValue, param.step);
+                valueSpan.textContent = displayValue.padStart(8);
+                
+                // Update displays - use lightweight update to avoid losing focus
+                this.updateSelectionOnly();
                 this.app.ui.updateDisplay();
                 
                 this.app.ui.updateStatus(`${param.name} set to ${newValue.toFixed(3)}`, 'success');
             } else {
-                // Invalid value, revert
-                lineElement.innerHTML = originalContent;
+                // Invalid value, revert value span content
+                valueSpan.textContent = originalContent;
                 this.app.ui.updateStatus(`Invalid value for ${param.name} (range: ${param.min} to ${param.max})`, 'error');
             }
         };
         
         // Handle keyboard events
         input.addEventListener('keydown', (e) => {
+            e.stopPropagation(); // Prevent all event propagation
             if (e.key === 'Enter') {
                 e.preventDefault();
                 finishEdit();
             } else if (e.key === 'Escape') {
                 e.preventDefault();
-                lineElement.innerHTML = originalContent;
+                // Restore value span content on escape
+                valueSpan.textContent = originalContent;
             }
         });
+        
+        // Prevent all other events from propagating during editing
+        input.addEventListener('keyup', (e) => e.stopPropagation());
+        input.addEventListener('keypress', (e) => e.stopPropagation());
+        input.addEventListener('input', (e) => e.stopPropagation());
+        input.addEventListener('mousemove', (e) => e.stopPropagation());
+        input.addEventListener('mouseenter', (e) => e.stopPropagation());
+        input.addEventListener('mouseleave', (e) => e.stopPropagation());
         
         // Handle focus loss
         input.addEventListener('blur', finishEdit);
@@ -256,82 +443,91 @@ export class DebugUIManager {
         const categories = this.app.parameters.getDebugParameterCategories();
         let debugHTML = '';
 
-        // ENHANCEMENT: Include all artistic parameters in debug view for comprehensive control
-        debugHTML += '<div class="debug-category-header" style="color: #4CAF50; font-weight: bold; margin: 15px 0 8px 0; font-size: 14px;">ARTISTIC PARAMETERS</div>';
-        
-        // Add all regular artistic parameters to debug view
-        this.app.parameters.parameterKeys.forEach(key => {
-            const param = this.app.parameters.getParameter(key);
-            if (!param) return;
-            
-            const index = this.app.parameters.parameterKeys.indexOf(key);
-            const isCurrent = key === this.getCurrentSelectedParameterKey();
-            
-            let displayValue;
-            if (param.step >= 1.0) {
-                displayValue = param.value.toFixed(0);
-            } else if (param.step >= 0.1) {
-                displayValue = param.value.toFixed(1);
-            } else if (param.step >= 0.01) {
-                displayValue = param.value.toFixed(2);
-            } else if (param.step >= 0.001) {
-                displayValue = param.value.toFixed(3);
-            } else {
-                displayValue = param.value.toFixed(4);
-            }
-            
-            const textColor = isCurrent ? '#4CAF50' : '#ffffff';
-            const fontWeight = isCurrent ? 'bold' : 'normal';
-            const backgroundColor = isCurrent ? 'rgba(76, 175, 80, 0.1)' : 'transparent';
-            
-            debugHTML += `<div class="debug-param-line" data-param-key="${key}" data-param-type="artistic" style="color: ${textColor}; font-weight: ${fontWeight}; background: ${backgroundColor}; margin: 2px 0; font-size: 11px; padding: 1px 3px; border-radius: 2px;">`;
-            debugHTML += `${param.name.padEnd(26)}: ${displayValue.padStart(8)}`;
-            debugHTML += `</div>`;
-        });
-
-        // Build the display category by category for debug parameters
+        // Build the display category by category for all parameters (artistic + debug)
         Object.keys(categories).forEach(categoryName => {
-            // Category header with consistent styling
-            debugHTML += `<div class="debug-category-header" style="color: #00BCD4; font-weight: bold; margin: 15px 0 8px 0; font-size: 14px;">${categoryName}</div>`;
+            // Wrap each category in a container to keep it together in columns
+            debugHTML += `<div class="debug-category-wrapper">`;
+            
+            // Category header with consistent styling - add special class for artistic parameters
+            const categoryClass = categoryName === 'ARTISTIC PARAMETERS' ? 'debug-category-header artistic-category' : 'debug-category-header';
+            debugHTML += `<div class="${categoryClass}">${categoryName}</div>`;
             
             // Parameters in this category
             categories[categoryName].forEach(key => {
                 const param = this.app.parameters.getParameter(key);
                 if (!param) return;
                 
-                const index = this.allDebugKeys.indexOf(key);
                 const isCurrent = key === this.getCurrentSelectedParameterKey();
                 
-                // Determine appropriate precision for display based on parameter step size
-                let displayValue;
-                if (param.step >= 1.0) {
-                    displayValue = param.value.toFixed(0);
-                } else if (param.step >= 0.1) {
-                    displayValue = param.value.toFixed(1);
-                } else if (param.step >= 0.01) {
-                    displayValue = param.value.toFixed(2);
-                } else if (param.step >= 0.001) {
-                    displayValue = param.value.toFixed(3);
-                } else {
-                    displayValue = param.value.toFixed(4);
-                }
+                // Format with appropriate decimal places based on step size
+                let displayValue = this.formatParameterValue(param.value, param.step);
                 
-                // Style the current parameter differently for clear visual feedback
-                const textColor = isCurrent ? '#4CAF50' : '#ffffff';
-                const fontWeight = isCurrent ? 'bold' : 'normal';
-                const backgroundColor = isCurrent ? 'rgba(76, 175, 80, 0.1)' : 'transparent';
+                const selectionClass = isCurrent ? 'selected' : 'unselected';
                 
-                // ENHANCEMENT: Add click handlers for mouse interaction
-                debugHTML += `<div class="debug-param-line" data-param-key="${key}" data-param-type="debug" style="color: ${textColor}; font-weight: ${fontWeight}; background: ${backgroundColor}; margin: 2px 0; font-size: 11px; padding: 1px 3px; border-radius: 2px;">`;
-                debugHTML += `${param.name.padEnd(26)}: ${displayValue.padStart(8)}`;
+                // Determine parameter type based on category
+                const paramType = categoryName === 'ARTISTIC PARAMETERS' ? 'artistic' : 'debug';
+                
+                debugHTML += `<div class="debug-param-line ${selectionClass}" data-param-key="${key}" data-param-type="${paramType}">`;
+                debugHTML += `<span class="param-name">${param.name.padEnd(26)}: </span>`;
+                debugHTML += `<span class="param-value" data-param-key="${key}">${displayValue.padStart(8)}</span>`;
+                debugHTML += `<input type="range" class="param-slider" data-param-key="${key}" min="${param.min}" max="${param.max}" step="${param.step}" value="${param.value}">`;
                 debugHTML += `</div>`;
             });
+            
+            // Close category wrapper
+            debugHTML += `</div>`;
         });
 
         debugParamsList.innerHTML = debugHTML;
         
         // ENHANCEMENT: Add click event listeners for mouse interaction
         this.setupMouseInteraction();
+        
+        // Update the current parameter info panel
+        this.updateCurrentParameterInfo();
+    }
+
+    // Lightweight selection update that doesn't rebuild HTML (prevents hover animation re-triggering)
+    updateSelectionOnly() {
+        if (!this.app.debugMenuVisible || this.allDebugKeys.length === 0) return;
+
+        const currentKey = this.allDebugKeys[this.currentDebugParameterIndex];
+        
+        // Update all parameter values in case any have changed
+        const allParamLines = document.querySelectorAll('.debug-param-line');
+        allParamLines.forEach(line => {
+            const paramKey = line.getAttribute('data-param-key');
+            const paramType = line.getAttribute('data-param-type');
+            
+            // Update the parameter value display and slider position
+            const param = this.app.parameters.getParameter(paramKey);
+            if (param) {
+                const valueSpan = line.querySelector('.param-value');
+                const slider = line.querySelector('.param-slider');
+                
+                if (valueSpan) {
+                    // Format with appropriate decimal places based on step size
+                    let displayValue = this.formatParameterValue(param.value, param.step);
+                    valueSpan.textContent = displayValue.padStart(8);
+                }
+                
+                // Update slider position to match current parameter value
+                if (slider) {
+                    slider.value = param.value;
+                }
+            }
+            
+            // Restore appropriate non-selected styling using CSS classes (preserves layout)
+            line.classList.remove('selected');
+            line.classList.add('unselected');
+        });
+        
+        // Apply current selection to the right item
+        const currentLine = document.querySelector(`[data-param-key="${currentKey}"]`);
+        if (currentLine) {
+            currentLine.classList.remove('unselected');
+            currentLine.classList.add('selected');
+        }
         
         // Update the current parameter info panel
         this.updateCurrentParameterInfo();
@@ -364,10 +560,28 @@ export class DebugUIManager {
         currentParamInfo.innerHTML = infoHTML;
     }
 
-    // Get human-readable descriptions for debug parameters
-    // These help users understand what each mathematical parameter actually controls
+    // Get human-readable descriptions for both artistic and debug parameters
+    // These help users understand what each parameter actually controls
     getParameterDescriptions() {
         return {
+            // Artistic parameter descriptions
+            'fly_speed': 'Speed of forward movement through the fractal tunnel. Higher values create faster flight.',
+            'rotation_speed': 'Speed of overall rotation around the tunnel axis. Creates spinning motion effect.',
+            'plane_rotation_speed': 'Speed of pattern plane rotation. Controls how fast individual pattern layers spin.',
+            'zoom_level': 'Camera zoom factor. Higher values zoom in closer, lower values zoom out for wider view.',
+            'kaleidoscope_segments': 'Number of mirror segments in kaleidoscope effect. Must be even for proper symmetry.',
+            'truchet_radius': 'Size of truchet pattern circles. Larger values create bigger, more prominent circular patterns.',
+            'center_fill_radius': 'Size of the central filled circle. Creates a focal point in the center of the view.',
+            'layer_count': 'Number of pattern layers rendered in depth. More layers create richer, more complex visuals.',
+            'camera_tilt_x': 'Camera tilt on X-axis. Positive values tilt the view up, negative values tilt down.',
+            'camera_tilt_y': 'Camera tilt on Y-axis. Positive values tilt the view right, negative values tilt left.',
+            'camera_roll': 'Camera roll rotation. Creates a tilting horizon effect for dynamic composition.',
+            'path_stability': 'Stability of the camera path. Lower values create more curved, organic movement.',
+            'path_scale': 'Scale of path variations. Higher values create wider, more dramatic path curves.',
+            'contrast': 'Visual contrast between light and dark areas. Higher values create more dramatic lighting.',
+            'color_intensity': 'Intensity of colors in the palette. Higher values create more vibrant, saturated colors.',
+            'color_speed': 'Speed of color cycling through the palette. Higher values create faster color changes.',
+            
             // Layer system descriptions
             'layer_distance': 'Distance between rendered layers. Lower values create tighter, more dense layering.',
             'layer_fade_start': 'Distance at which layers begin fading. Higher values show more distant layers.',
@@ -425,21 +639,15 @@ export class DebugUIManager {
     }
 
     // Randomize debug parameters (use with caution!)
-    // Only randomizes mathematically safe parameters to avoid breaking the visualization
+    // Randomizes ALL debug parameters - can create wild/broken visualizations!
     randomizeDebugParameters() {
         this.app.saveStateForUndo();
         
-        // Only randomize parameters that are safe to adjust without breaking the visualization
-        // Avoid randomizing rendering quality and critical mathematical constants
-        const safeToRandomize = [
-            'path_freq_primary', 'path_freq_secondary', 'path_freq_tertiary',
-            'kaleidoscope_smoothing', 'pattern_threshold_full', 
-            'pattern_threshold_partial_a', 'pattern_threshold_partial_b',
-            'fov_distortion', 'perspective_curve', 'layer_fade_start'
-        ];
+        // Get ALL debug parameters and randomize them
+        const allDebugKeys = this.app.parameters.getAllDebugParameterKeys();
         
         let randomizedCount = 0;
-        safeToRandomize.forEach(key => {
+        allDebugKeys.forEach(key => {
             const param = this.app.parameters.getParameter(key);
             if (param) {
                 const range = param.max - param.min;
@@ -451,7 +659,7 @@ export class DebugUIManager {
         
         this.parameterModificationCount += randomizedCount;
         this.updateDebugMenuDisplay();
-        this.app.ui.updateStatus(`${randomizedCount} debug parameters randomized safely`, 'success');
+        this.app.ui.updateStatus(`🎲 ${randomizedCount} debug parameters randomized (ALL OF THEM!)`, 'success');
     }
 
     // Export current debug parameter state for sharing
@@ -522,5 +730,294 @@ export class DebugUIManager {
         });
         
         return stats;
+    }
+    
+    // Update the system status display in debug menu
+    updateSystemStatus() {
+        const statusElement = document.getElementById('debugSystemStatus');
+        if (!statusElement || !this.app.debugMenuVisible) return;
+        
+        const systemStatus = this.app.getSystemStatus();
+        const currentTime = new Date().toLocaleTimeString();
+        
+        let statusHTML = `<div style="margin-bottom: 6px;"><strong>🔧 System Performance [${currentTime}]</strong></div>`;
+        
+        // Core system metrics
+        statusHTML += `<div style="margin-bottom: 4px;">`;
+        statusHTML += `⏱️ Frame Time: ${systemStatus.averageFrameTime} (${systemStatus.estimatedFPS} FPS)<br>`;
+        statusHTML += `🎬 Total Frames: ${systemStatus.totalFramesRendered.toLocaleString()}<br>`;
+        statusHTML += `💾 Undo Stack: ${systemStatus.undoStackSize}/${50} steps`;
+        statusHTML += `</div>`;
+        
+        // Current operational state
+        statusHTML += `<div style="margin-bottom: 4px;"><strong>🎮 Active Systems:</strong><br>`;
+        statusHTML += `${systemStatus.debugModeActive ? '🧮' : '🎨'} ${systemStatus.debugModeActive ? 'Debug Mode' : 'Artistic Mode'}<br>`;
+        statusHTML += `${systemStatus.animationPaused ? '⏸️' : '▶️'} ${systemStatus.animationPaused ? 'Paused' : 'Animation'}<br>`;
+        statusHTML += `${systemStatus.audioReactive ? '🎵' : '🔇'} Audio: ${systemStatus.audioReactive ? 'Reactive' : 'Static'}`;
+        
+        statusHTML += `</div>`;
+        
+        // Memory and performance warnings
+        if (systemStatus.undoStackSize > 40) {
+            statusHTML += `<div style="color: #FF9800;">⚠️ High memory usage</div>`;
+        }
+        
+        const frameTime = parseFloat(systemStatus.averageFrameTime);
+        if (frameTime > 20) {
+            statusHTML += `<div style="color: #FF5722;">⚠️ Performance impact detected</div>`;
+        }
+        
+        statusElement.innerHTML = statusHTML;
+    }
+    
+    // Start periodic system status updates
+    startSystemStatusUpdates() {
+        // Update every 2 seconds for real-time monitoring
+        this.systemStatusInterval = setInterval(() => {
+            if (this.app.debugMenuVisible) {
+                this.updateSystemStatus();
+            }
+        }, 2000);
+    }
+    
+    // Stop system status updates
+    stopSystemStatusUpdates() {
+        if (this.systemStatusInterval) {
+            clearInterval(this.systemStatusInterval);
+            this.systemStatusInterval = null;
+        }
+    }
+    
+    
+    
+    
+    // Set up microphone selection controls
+    async setupMicrophoneControls() {
+        const micSelect = document.getElementById('microphoneSelect');
+        const refreshButton = document.getElementById('microphoneRefresh');
+        const connectButton = document.getElementById('microphoneConnect');
+        
+        if (!micSelect || !refreshButton || !connectButton) {
+            console.warn('Microphone controls not found in debug menu');
+            return;
+        }
+        
+        // Refresh devices list
+        const refreshDevices = async () => {
+            const devices = await this.app.audio.getAvailableDevices();
+            
+            // Clear existing options
+            micSelect.innerHTML = '<option value="">Select microphone...</option>';
+            
+            // Add device options
+            devices.forEach(device => {
+                const option = document.createElement('option');
+                option.value = device.deviceId;
+                option.textContent = device.label || `Microphone ${device.deviceId.substring(0, 8)}`;
+                micSelect.appendChild(option);
+            });
+            
+            console.log(`🎤 Found ${devices.length} audio input devices`);
+        };
+        
+        // Set up event handlers
+        refreshButton.onclick = refreshDevices;
+        
+        connectButton.onclick = async () => {
+            const selectedDeviceId = micSelect.value;
+            if (!selectedDeviceId) {
+                this.app.ui.updateStatus('Please select a microphone first', 'error');
+                return;
+            }
+            
+            // Initialize audio context if needed
+            if (!this.app.audio.audioContext) {
+                await this.app.audio.initAudioContext();
+            }
+            
+            // Stop current microphone if active
+            if (this.app.audio.microphoneActive) {
+                this.app.audio.stopMicrophone();
+            }
+            
+            // Set selected device and start
+            this.app.audio.selectedMicrophoneId = selectedDeviceId;
+            await this.app.audio.startMicrophone(selectedDeviceId);
+        };
+        
+        // Initial device refresh
+        await refreshDevices();
+        
+        console.log('Microphone selection controls initialized');
+    }
+    
+    // Update microphone status display
+    updateMicrophoneStatus() {
+        const statusDiv = document.getElementById('microphoneStatus');
+        const volumeBar = document.getElementById('microphoneVolumeBar');
+        const volumeLevel = document.getElementById('microphoneVolumeLevel');
+        const volumeText = document.getElementById('microphoneVolumeText');
+        
+        if (!statusDiv) return;
+        
+        if (this.app.audio.microphoneActive) {
+            const deviceInfo = this.app.audio.availableDevices.find(
+                device => device.deviceId === this.app.audio.selectedMicrophoneId
+            );
+            const deviceName = deviceInfo?.label || 'Unknown device';
+            statusDiv.innerHTML = `<span style="color: #9C27B0;">● Active: ${deviceName}</span>`;
+            
+            // Show and update volume bar
+            if (volumeBar) {
+                volumeBar.style.display = 'block';
+                
+                // Get current volume level (0-1)
+                const currentVolume = this.app.audio.getCurrentVolumeLevel();
+                const volumePercent = Math.round(currentVolume * 100);
+                
+                if (volumeLevel) {
+                    volumeLevel.style.width = `${volumePercent}%`;
+                }
+                
+                if (volumeText) {
+                    volumeText.textContent = `${volumePercent}%`;
+                }
+            }
+        } else {
+            statusDiv.innerHTML = '<span style="color: #888;">○ Not connected</span>';
+            
+            // Hide volume bar when not connected
+            if (volumeBar) {
+                volumeBar.style.display = 'none';
+            }
+        }
+    }
+    
+    // Show debug logging control popup
+    showDebugLoggingControls() {
+        // Don't create if already visible
+        if (this.debugLoggingMenuVisible) {
+            return;
+        }
+        
+        // Create menu dialog (no full-screen overlay)
+        const dialog = document.createElement('div');
+        dialog.id = 'debugLoggingOverlay';
+        this.debugLoggingMenuVisible = true;
+        dialog.style.cssText = `
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(26, 26, 26, 0.95);
+            border: 2px solid #2196F3;
+            border-radius: 12px;
+            padding: 25px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            color: #ffffff;
+            z-index: 10000;
+            font-family: 'Courier New', monospace;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        `;
+
+        const loggingOptions = [
+            { key: 'audioLevels', label: '🎤 Audio Levels', desc: 'Real-time bass/mid/treble analysis' },
+            { key: 'audioRawData', label: '🎤 Audio Raw Data', desc: 'Raw microphone data values' },
+            { key: 'audioEffects', label: '🎨 Audio Effects', desc: 'Which parameters audio modifies' },
+            { key: 'performanceFrames', label: '🎬 Performance Frames', desc: 'Frame timing every 60 frames' },
+            { key: 'microphoneSetup', label: '🎤 Microphone Setup', desc: 'Device initialization info' },
+            { key: 'parameterChanges', label: '📊 Parameter Changes', desc: 'When parameters are modified' },
+            { key: 'systemStatus', label: '🔧 System Status', desc: 'Internal system diagnostics' }
+        ];
+
+        let checkboxHTML = '';
+        loggingOptions.forEach(option => {
+            const checked = this.debugLogging[option.key] ? 'checked' : '';
+            checkboxHTML += `
+                <div style="margin-bottom: 12px; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 4px;">
+                    <label style="display: flex; align-items: center; cursor: pointer;">
+                        <input type="checkbox" id="debug_${option.key}" ${checked} 
+                               style="margin-right: 10px; transform: scale(1.2);">
+                        <div>
+                            <div style="color: #2196F3; font-weight: bold; font-size: 13px;">${option.label}</div>
+                            <div style="color: #cccccc; font-size: 11px; margin-top: 2px;">${option.desc}</div>
+                        </div>
+                    </label>
+                </div>
+            `;
+        });
+
+        dialog.innerHTML = `
+            <h3 style="color: #2196F3; margin-bottom: 15px; font-size: 16px;">🔧 Debug Console Logging</h3>
+            
+            <div style="margin-bottom: 15px; font-size: 12px; line-height: 1.4; color: #cccccc;">
+                Choose which debug information to show in the browser console.
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                ${checkboxHTML}
+            </div>
+            
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button id="debugLoggingClear" style="padding: 8px 16px; background: #FF5722; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-family: 'Courier New', monospace;">Clear Console</button>
+                <button id="debugLoggingClose" style="padding: 8px 16px; background: #2196F3; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-family: 'Courier New', monospace;">Close</button>
+            </div>
+        `;
+
+        document.body.appendChild(dialog);
+
+        // Set up event handlers for checkboxes
+        loggingOptions.forEach(option => {
+            const checkbox = document.getElementById(`debug_${option.key}`);
+            if (checkbox) {
+                checkbox.onchange = () => {
+                    this.debugLogging[option.key] = checkbox.checked;
+                    console.log(`🔧 Debug logging ${option.label}: ${checkbox.checked ? 'ON' : 'OFF'}`);
+                };
+            }
+        });
+
+        // Handle buttons
+        const clearButton = document.getElementById('debugLoggingClear');
+        const closeButton = document.getElementById('debugLoggingClose');
+        
+        if (clearButton) {
+            clearButton.onclick = () => {
+                console.clear();
+                console.log('🔧 Console cleared');
+            };
+        }
+
+        if (closeButton) {
+            closeButton.onclick = () => {
+                this.hideDebugLoggingControls(dialog);
+            };
+        }
+
+        // ESC key handling moved to main controls for coordination
+
+        // Focus the dialog
+        setTimeout(() => dialog.focus(), 100);
+    }
+    
+    // Hide debug logging controls
+    hideDebugLoggingControls(dialog = null) {
+        if (!dialog) {
+            dialog = document.getElementById('debugLoggingOverlay');
+        }
+        if (dialog && dialog.parentNode) {
+            document.body.removeChild(dialog);
+        }
+        this.debugLoggingMenuVisible = false;
+    }
+    
+    // Helper method to check if a specific debug type should be logged
+    shouldLog(type) {
+        return this.debugLogging[type] || false;
     }
 }

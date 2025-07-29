@@ -1,0 +1,13 @@
+{
+  "name": "Bright",
+  "description": "Vivid color palette for layer-based coloring",
+  "type": "layer",
+  "colors": [
+    "#FF0000",
+    "#00FF00",
+    "#0000FF",
+    "#FFFF00",
+    "#FF00FF",
+    "#00FFFF" 
+  ]
+}

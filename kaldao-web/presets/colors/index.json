@@ -1,0 +1,25 @@
+{
+  "classic": {
+    "presets": [
+      "bw",
+      "rainbow", 
+      "fire",
+      "ocean",
+      "purple",
+      "neon",
+      "sunset"
+    ]
+  },
+  "layers": {
+    "presets": [
+      "default",
+      "sunset",
+      "bright",
+      "fire", 
+      "moody",
+      "pride",
+      "rainbow",
+      "raspberry"
+    ]
+  }
+}

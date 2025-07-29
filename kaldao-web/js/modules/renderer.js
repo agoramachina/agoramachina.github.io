@@ -20,6 +20,7 @@ export class Renderer {
         this.canvas = null;                // The HTML canvas where visuals appear
         this.program = null;               // The compiled shader program (vertex + fragment shaders)
         this.uniforms = {};                // Our "directory" of uniform locations - like phone numbers for GPU variables
+        this.app = null;                   // Reference to main app for accessing color manager
         
         // Enhanced tracking for debug system
         this.uniformStats = {              // Statistics about uniform usage for optimization and debugging
@@ -187,7 +188,7 @@ export class Renderer {
             // CORE SYSTEM UNIFORMS
             // These drive the basic fractal mathematics and are essential for any visualization
             uniform vec2 u_resolution;           // Screen resolution for aspect ratio correction
-            uniform float u_time;                // Current time for animations
+            // u_time removed - not used in shader
             uniform float u_camera_position;     // Position along the tunnel path
             uniform float u_rotation_time;       // Accumulated rotation for pattern spinning
             uniform float u_plane_rotation_time; // Per-layer rotation accumulation
@@ -195,14 +196,12 @@ export class Renderer {
             
             // ARTISTIC PARAMETER UNIFORMS
             // These correspond to the user-friendly creative controls
-            uniform float u_fly_speed;           // Speed of movement through tunnel
+            // Speed uniforms removed - JavaScript handles time accumulation
             uniform float u_contrast;            // Edge sharpness and detail visibility
             uniform float u_kaleidoscope_segments; // Number of radial mirror segments
             uniform float u_layer_count;         // How many depth layers to render
             uniform float u_truchet_radius;      // Size of circular pattern elements
             uniform float u_center_fill_radius;  // Central area fill control
-            uniform float u_rotation_speed;      // Speed of pattern rotation
-            uniform float u_plane_rotation_speed; // Per-layer rotation speed
             uniform float u_zoom_level;          // Magnification level
             uniform float u_color_intensity;     // Overall brightness multiplier
             uniform float u_camera_tilt_x;       // Camera horizontal tilt
@@ -210,7 +209,6 @@ export class Renderer {
             uniform float u_camera_roll;         // Camera rotation around view axis
             uniform float u_path_stability;      // Curvature vs straightness of tunnel path
             uniform float u_path_scale;          // Overall scale of path movements
-            uniform float u_color_speed;         // Speed of color palette cycling
             
             // DEBUG PARAMETER UNIFORMS - MATHEMATICAL CONTROL LAYER
             // These expose the internal mathematical constants for deep exploration
@@ -258,12 +256,28 @@ export class Renderer {
             
             // COLOR SYSTEM UNIFORMS
             // These control the mathematical color generation and post-processing
-            uniform float u_use_color_palette;   // Enable mathematical color palette
+            // u_use_color_palette and u_use_layer_colors removed - replaced by u_color_mode  
             uniform float u_invert_colors;       // Apply color inversion post-processing
+            uniform float u_color_mode;          // Color mode: 0=B&W, 1=Original/Palette, 2=Layer
             uniform vec3 u_palette_a;            // Color palette coefficient A
             uniform vec3 u_palette_b;            // Color palette coefficient B
             uniform vec3 u_palette_c;            // Color palette coefficient C
             uniform vec3 u_palette_d;            // Color palette coefficient D
+            
+            // Layer colors from JSON presets
+            uniform vec3 u_layer_color_0;
+            uniform vec3 u_layer_color_1;
+            uniform vec3 u_layer_color_2;
+            uniform vec3 u_layer_color_3;
+            uniform vec3 u_layer_color_4;
+            uniform vec3 u_layer_color_5;
+            uniform vec3 u_layer_color_6;
+            uniform vec3 u_layer_color_7;
+            uniform vec3 u_layer_color_8;
+            uniform vec3 u_layer_color_9;
+            uniform vec3 u_layer_color_10;
+            uniform vec3 u_layer_color_11;
+            uniform int u_layer_color_count;
             
             #define PI 3.14159265359
             
@@ -301,7 +315,7 @@ export class Renderer {
                 
                 // Create truchet-inspired pattern with debug parameter control
                 fractalP *= u_zoom_level;
-                fractalP += u_rotation_time * u_rotation_speed;
+                fractalP += u_rotation_time; // u_rotation_speed removed from shader
                 
                 float pattern = sin(fractalP.x * u_detail_frequency) * cos(fractalP.y * u_detail_frequency);
                 pattern = smoothstep(-u_aa_multiplier * 0.01, u_aa_multiplier * 0.01, pattern - u_truchet_radius);
@@ -318,8 +332,8 @@ export class Renderer {
                 // Generate fractal pattern using simplified mathematics
                 vec3 col = simpleFractalEffect(p);
                 
-                // Apply color palette if enabled
-                if (u_use_color_palette > 0.5) {
+                // Apply color palette based on color mode
+                if (u_color_mode > 0.5 && u_color_mode < 1.5) { // Mode 1: Original Palette System
                     float t = length(col) + u_color_time;
                     col = palette(t) * length(col);
                 }
@@ -409,7 +423,7 @@ export class Renderer {
         // CORE SYSTEM UNIFORMS - Essential for basic operation
         const coreUniforms = [
             'u_resolution',                    // Screen dimensions for aspect ratio
-            'u_time',                         // Current time for animations
+            // 'u_time' removed - not used in shader
             'u_camera_position',              // Position along tunnel path
             'u_rotation_time',                // Accumulated rotation time
             'u_plane_rotation_time',          // Per-layer rotation time
@@ -418,11 +432,11 @@ export class Renderer {
         
         // ARTISTIC PARAMETER UNIFORMS - User-friendly creative controls
         const artisticUniforms = [
-            'u_fly_speed', 'u_contrast', 'u_kaleidoscope_segments', 'u_layer_count',
-            'u_truchet_radius', 'u_center_fill_radius', 'u_rotation_speed',
-            'u_plane_rotation_speed', 'u_zoom_level', 'u_color_intensity',
+            // Speed uniforms removed - JavaScript handles time accumulation
+            'u_contrast', 'u_kaleidoscope_segments', 'u_layer_count',
+            'u_truchet_radius', 'u_center_fill_radius', 'u_zoom_level', 'u_color_intensity',
             'u_camera_tilt_x', 'u_camera_tilt_y', 'u_camera_roll',
-            'u_path_stability', 'u_path_scale', 'u_color_speed'
+            'u_path_stability', 'u_path_scale'
         ];
         
         // DEBUG PARAMETER UNIFORMS - Mathematical exploration controls
@@ -457,8 +471,13 @@ export class Renderer {
         
         // COLOR SYSTEM UNIFORMS - Mathematical color generation
         const colorUniforms = [
-            'u_use_color_palette', 'u_invert_colors',
-            'u_palette_a', 'u_palette_b', 'u_palette_c', 'u_palette_d'
+            // 'u_use_color_palette', 'u_use_layer_colors' removed - replaced by u_color_mode
+            'u_invert_colors', 'u_color_mode',
+            'u_palette_a', 'u_palette_b', 'u_palette_c', 'u_palette_d',
+            'u_layer_color_0', 'u_layer_color_1', 'u_layer_color_2', 'u_layer_color_3',
+            'u_layer_color_4', 'u_layer_color_5', 'u_layer_color_6', 'u_layer_color_7',
+            'u_layer_color_8', 'u_layer_color_9', 'u_layer_color_10', 'u_layer_color_11',
+            'u_layer_color_count'
         ];
         
         // Create the complete uniform registry
@@ -571,7 +590,7 @@ export class Renderer {
     setCoreUniforms(parameters) {
         // These uniforms drive the fundamental mathematical evolution of the fractal
         this.gl.uniform2f(this.uniforms.u_resolution, this.canvas.width, this.canvas.height);
-        this.gl.uniform1f(this.uniforms.u_time, performance.now() * 0.001);
+        // u_time removed from shader - JavaScript handles time accumulation
         this.gl.uniform1f(this.uniforms.u_camera_position, parameters.timeAccumulation.camera_position);
         this.gl.uniform1f(this.uniforms.u_rotation_time, parameters.timeAccumulation.rotation_time);
         this.gl.uniform1f(this.uniforms.u_plane_rotation_time, parameters.timeAccumulation.plane_rotation_time);
@@ -613,9 +632,19 @@ export class Renderer {
     
     // RENDER STATE UNIFORM SETTING - Visual presentation controls
     setRenderStateUniforms(renderState, parameters) {
-        // Color system state
-        this.gl.uniform1f(this.uniforms.u_use_color_palette, renderState.useColorPalette ? 1.0 : 0.0);
-        this.gl.uniform1f(this.uniforms.u_invert_colors, renderState.invertColors ? 1.0 : 0.0);
+        // Color system state  
+        // u_use_color_palette removed - replaced by color_mode
+        if (this.uniforms.u_invert_colors) {
+            this.gl.uniform1f(this.uniforms.u_invert_colors, renderState.invertColors ? 1.0 : 0.0);
+        }
+        
+        // New unified color mode system
+        if (this.uniforms.u_color_mode) {
+            this.gl.uniform1f(this.uniforms.u_color_mode, parameters.getValue('color_mode'));
+        }
+        
+        // Layer colors from JSON presets
+        this.setLayerColorUniforms();
         
         // Color palette coefficients for mathematical color generation
         const palette = parameters.getPalette(renderState.currentPaletteIndex);
@@ -625,6 +654,62 @@ export class Renderer {
             this.gl.uniform3f(this.uniforms.u_palette_c, palette.c[0], palette.c[1], palette.c[2]);
             this.gl.uniform3f(this.uniforms.u_palette_d, palette.d[0], palette.d[1], palette.d[2]);
         }
+    }
+    
+    // Set layer color uniforms from color manager
+    setLayerColorUniforms() {
+        // Get the color manager's app reference to access layer colors
+        if (!this.app || !this.app.color || !this.app.color.layerColorPalettes) {
+            // Fallback colors if color manager not ready
+            const fallbackColors = [
+                [0.557, 0.141, 0.667], [0.098, 0.463, 0.824], [0.000, 0.475, 0.420], [0.220, 0.557, 0.235],
+                [0.961, 0.486, 0.000], [0.902, 0.290, 0.098], [0.776, 0.157, 0.157], [0.678, 0.078, 0.341],
+                [0.416, 0.106, 0.604], [0.271, 0.153, 0.627], [0.827, 0.184, 0.184], [0.271, 0.353, 0.392]
+            ];
+            
+            for (let i = 0; i < 12; i++) {
+                const uniformName = `u_layer_color_${i}`;
+                if (this.uniforms[uniformName]) {
+                    const color = fallbackColors[i] || [1.0, 1.0, 1.0];
+                    this.gl.uniform3f(this.uniforms[uniformName], color[0], color[1], color[2]);
+                }
+            }
+            
+            if (this.uniforms.u_layer_color_count) {
+                this.gl.uniform1i(this.uniforms.u_layer_color_count, 12);
+            }
+            return;
+        }
+        
+        const currentPalette = this.app.color.layerColorPalettes[this.app.color.currentLayerPaletteIndex];
+        
+        if (currentPalette && currentPalette.colors) {
+            // Convert hex colors to RGB and send to shader
+            for (let i = 0; i < 12; i++) {
+                const uniformName = `u_layer_color_${i}`;
+                if (this.uniforms[uniformName]) {
+                    // Cycle through colors if we have more layers than colors
+                    const colorIndex = i % currentPalette.colors.length;
+                    const hex = currentPalette.colors[colorIndex];
+                    const rgb = this.hexToRgb(hex);
+                    this.gl.uniform3f(this.uniforms[uniformName], rgb.r, rgb.g, rgb.b);
+                }
+            }
+            
+            if (this.uniforms.u_layer_color_count) {
+                this.gl.uniform1i(this.uniforms.u_layer_color_count, currentPalette.colors.length);
+            }
+        }
+    }
+    
+    // Convert hex color to normalized RGB
+    hexToRgb(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16) / 255,
+            g: parseInt(result[2], 16) / 255,
+            b: parseInt(result[3], 16) / 255
+        } : { r: 1, g: 1, b: 1 }; // fallback to white
     }
     
     // RENDERING PERFORMANCE TRACKING

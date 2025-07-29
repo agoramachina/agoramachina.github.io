@@ -38,6 +38,23 @@ export class ControlsManager {
 
     handleKeydown(e) {
         try {
+            // Check if user is typing in an input field - if so, ignore most hotkeys
+            const activeElement = document.activeElement;
+            const isTypingInInput = activeElement && (
+                activeElement.tagName === 'INPUT' || 
+                activeElement.tagName === 'TEXTAREA' ||
+                activeElement.contentEditable === 'true'
+            );
+            
+            // Allow certain keys even when typing (Escape, Ctrl+Z, etc.)
+            const alwaysAllowedKeys = ['Escape', 'KeyZ', 'KeyY'];
+            const isCtrlKey = e.ctrlKey || e.metaKey;
+            
+            if (isTypingInInput && !alwaysAllowedKeys.includes(e.code) && !isCtrlKey) {
+                // User is typing in input field - don't intercept the key
+                return;
+            }
+            
             // Always reset the UI fade timer on any keypress
             // This ensures the interface remains visible while actively controlling parameters
             this.app.ui.resetControlsFadeTimer();
@@ -57,7 +74,7 @@ export class ControlsManager {
             // CONTEXT-SENSITIVE KEY ROUTING
             // This is the heart of our dual-mode system - we route the same physical keys
             // to different logical functions based on the current operational context
-            if (this.app.debugMenuVisible) {
+            if (this.app.debugMode) {
                 // DEBUG MODE: Route keys to mathematical parameter control
                 this.handleDebugModeKeys(e);
             } else {
@@ -110,7 +127,8 @@ export class ControlsManager {
                 if (e.shiftKey) {
                     this.resetToBlackWhite();
                 } else {
-                    this.randomizeColors();
+                    // Show advanced color menu instead of randomizing colors
+                    this.app.parameters.showAdvancedColorMenu();
                 }
                 break;
                 
@@ -135,22 +153,36 @@ export class ControlsManager {
                 
             case 'KeyS':
                 e.preventDefault();
-                this.app.fileManager.saveParameters();
+                if (e.ctrlKey || e.metaKey) {
+                    this.app.fileManager.saveParameters();
+                }
                 break;
                 
             case 'KeyL':
                 e.preventDefault();
-                this.app.fileManager.loadParameters();
+                if (e.ctrlKey || e.metaKey) {
+                    this.app.fileManager.loadParameters();
+                }
                 break;
                 
             case 'Escape':
                 e.preventDefault();
-                this.app.ui.toggleMenu();
+                // Check if any advanced menus are open first
+                if (this.app.debugUI.debugLoggingMenuVisible) {
+                    this.app.debugUI.hideDebugLoggingControls();
+                } else if (this.app.audio.advancedMenuVisible) {
+                    this.app.audio.hideAdvancedAudioMenu();
+                } else if (this.app.color.advancedColorMenuVisible) {
+                    this.app.color.hideAdvancedColorMenu();
+                } else {
+                    this.app.ui.toggleMenu();
+                }
                 break;
                 
             case 'KeyA':
                 e.preventDefault();
-                this.app.audio.toggleAudio();
+                // A: Toggle microphone
+                this.app.audio.toggleMicrophone();
                 break;
                 
             case 'KeyZ':
@@ -167,14 +199,22 @@ export class ControlsManager {
                 }
                 break;
                 
-            case 'KeyM':
+            case 'KeyO':
                 e.preventDefault();
-                this.app.audio.toggleMicrophone();
                 break;
                 
-            case 'Semicolon':  // THE DEBUG MODE GATEWAY
+            case 'KeyD':  // DEBUG LOGGING CONTROLS (available in normal mode too)
                 e.preventDefault();
-                this.enterDebugMode();
+                if (this.app.debugUI.debugLoggingMenuVisible) {
+                    this.app.debugUI.hideDebugLoggingControls();
+                } else {
+                    this.app.debugUI.showDebugLoggingControls();
+                }
+                break;
+                
+            case 'Semicolon':  // THE DEBUG MODE TOGGLE
+                e.preventDefault();
+                this.toggleDebugMode();
                 break;
         }
     }
@@ -239,9 +279,17 @@ export class ControlsManager {
                 
             case 'Period':
                 e.preventDefault();
-                // CONTROLLED RANDOMIZATION: Only randomize mathematically safe debug parameters
-                // This prevents breaking the visualization while still allowing exploration
-                this.app.debugUI.randomizeDebugParameters();
+                // Save state for undo before randomizing
+                this.app.saveStateForUndo();
+                
+                // Randomize artistic parameters (same as normal mode)
+                this.app.parameters.randomizeParameters();
+                
+                // Update displays
+                this.app.ui.updateDisplay();
+                this.app.debugUI.updateDebugMenuDisplay();
+                
+                this.app.ui.updateStatus('🎲 Randomized artistic parameters', 'success');
                 break;
                 
             case 'KeyE':  // EXPORT DEBUG STATE
@@ -251,10 +299,14 @@ export class ControlsManager {
                 this.app.debugUI.exportDebugState();
                 break;
                 
-            case 'KeyD':  // DEBUG STATISTICS
+            case 'KeyD':  // DEBUG LOGGING CONTROLS
                 e.preventDefault();
-                // Display comprehensive information about current debug state
-                this.showDebugStatistics();
+                // Toggle debug logging controls popup
+                if (this.app.debugUI.debugLoggingMenuVisible) {
+                    this.app.debugUI.hideDebugLoggingControls();
+                } else {
+                    this.app.debugUI.showDebugLoggingControls();
+                }
                 break;
                 
             case 'KeyH':  // HELP IN DEBUG MODE
@@ -263,8 +315,22 @@ export class ControlsManager {
                 this.showDebugHelp();
                 break;
                 
+                
             case 'Escape':
-            case 'Semicolon':  // EITHER KEY EXITS DEBUG MODE
+                e.preventDefault();
+                // Check if any advanced menus are open first
+                if (this.app.debugUI.debugLoggingMenuVisible) {
+                    this.app.debugUI.hideDebugLoggingControls();
+                } else if (this.app.audio.advancedMenuVisible) {
+                    this.app.audio.hideAdvancedAudioMenu();
+                } else if (this.app.color.advancedColorMenuVisible) {
+                    this.app.color.hideAdvancedColorMenu();
+                } else {
+                    this.app.debugUI.toggleDebugMenu();
+                }
+                break;
+                
+            case 'Semicolon':  // SEMICOLON EXITS DEBUG MODE
                 e.preventDefault();
                 this.exitDebugMode();
                 break;
@@ -285,6 +351,53 @@ export class ControlsManager {
                 }
                 break;
                 
+            case 'KeyA':  // MICROPHONE TOGGLE IN DEBUG MODE
+                e.preventDefault();
+                // A: Toggle microphone for audio-reactive mathematical exploration
+                this.app.audio.toggleMicrophone();
+                break;
+                
+            case 'KeyC':  // COLOR MENU IN DEBUG MODE
+                e.preventDefault();
+                if (e.shiftKey) {
+                    this.resetToBlackWhite();
+                } else {
+                    // Show advanced color menu - same as normal mode for consistency
+                    this.app.parameters.showAdvancedColorMenu();
+                }
+                break;
+                
+            case 'KeyI':  // INVERT COLORS IN DEBUG MODE
+                e.preventDefault();
+                // Visual inversion should work in both modes for consistency
+                this.toggleInvertColors();
+                break;
+                
+            case 'KeyR':  // RESET IN DEBUG MODE
+                e.preventDefault();
+                if (e.shiftKey) {
+                    // Reset all parameters (with confirmation) - works in both modes
+                    this.resetAllParameters();
+                } else {
+                    // Reset current debug parameter
+                    this.app.debugUI.resetCurrentDebugParameter();
+                }
+                break;
+                
+            case 'Comma':  // RANDOMIZE DEBUG PARAMETERS ONLY
+                e.preventDefault();
+                // Save state for undo before randomizing debug parameters
+                this.app.saveStateForUndo();
+                
+                // Randomize debug parameters (safe ones only)
+                this.app.debugUI.randomizeDebugParameters();
+                
+                // Update debug display
+                this.app.debugUI.updateDebugMenuDisplay();
+                
+                this.app.ui.updateStatus('🎲 Randomized mathematical parameters only', 'success');
+                break;
+                
             // IMPORTANT: Most other keys are intentionally ignored in debug mode
             // This prevents accidental audio changes, file operations, etc. while exploring mathematics
             default:
@@ -296,20 +409,41 @@ export class ControlsManager {
     // DEBUG MODE TRANSITION METHODS
     // These handle the conceptual and visual transition between operational modes
     
+    toggleDebugMode() {
+        if (this.app.debugMode) {
+            this.exitDebugMode();
+        } else {
+            this.enterDebugMode();
+        }
+    }
+    
     enterDebugMode() {
         this.lastModeSwitch = performance.now();
-        this.app.debugUI.toggleDebugMenu();
+        this.app.debugMode = true;
+        
+        // Close any open menus when entering debug mode
+        if (this.app.menuVisible) {
+            this.app.ui.toggleMenu();
+        }
+        if (this.app.debugMenuVisible) {
+            this.app.debugUI.toggleDebugMenu();
+        }
         
         // Provide clear feedback about the mode transition
         // This helps users understand they've entered a different operational context
-        this.app.ui.updateStatus('🔧 DEBUG MODE: Mathematical parameter control active. Press ; or ESC to exit.', 'info');
+        this.app.ui.updateStatus('🔧 DEBUG MODE: Mathematical parameter control active. Press ESC for debug menu, ; to exit.', 'info');
         
         console.log('Entered debug mode - mathematical parameter control active');
     }
     
     exitDebugMode() {
         this.lastModeSwitch = performance.now();
-        this.app.debugUI.toggleDebugMenu();
+        this.app.debugMode = false;
+        
+        // Close debug menu if it's open
+        if (this.app.debugMenuVisible) {
+            this.app.debugUI.toggleDebugMenu();
+        }
         
         // Calculate how long the user spent in debug mode for analytics
         const debugDuration = this.lastModeSwitch - (this.lastModeSwitch - 1000); // Simplified for example
@@ -337,7 +471,7 @@ export class ControlsManager {
         console.log('Debug Statistics:', {
             debugParameters: stats,
             systemStatus: systemStatus,
-            currentParameter: this.app.debugUI.getCurrentDebugParameterKey()
+            currentParameter: this.app.debugUI.getCurrentSelectedParameterKey()
         });
     }
     
@@ -350,7 +484,7 @@ export class ControlsManager {
     handleWheelInteraction() {
         // Handle mouse wheel events for potential future enhancement
         // Could be used for fine parameter adjustment in debug mode
-        if (this.app.debugMenuVisible) {
+        if (this.app.debugMode) {
             // Future: Could implement wheel-based parameter adjustment
             // For now, just reset the UI timer
             this.app.ui.resetControlsFadeTimer();
@@ -393,6 +527,17 @@ export class ControlsManager {
 
     togglePause() {
         this.app.animationPaused = !this.app.animationPaused;
+        
+        // Pause/resume audio along with animation
+        if (this.app.audio.audioElement && this.app.audio.audioPlaying) {
+            if (this.app.animationPaused) {
+                this.app.audio.audioElement.pause();
+            } else {
+                this.app.audio.audioElement.play().catch(error => {
+                    console.warn('Audio resume failed:', error);
+                });
+            }
+        }
         
         // Enhanced status message that includes current mode context
         const status = this.app.animationPaused ? 'PAUSED' : 'RUNNING';

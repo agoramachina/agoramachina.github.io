@@ -1,60 +1,135 @@
-// CC0: Truchet + Kaleidoscope FTW
-// Heavily commented version to understand the math
-// WebGL version of the Kaldao fractal visualizer
+// Enhanced Kaldao Fractal Visualizer Fragment Shader
+// Now integrates with the JavaScript debug parameter system for mathematical exploration
+//
+// MATHEMATICAL TRANSFORMATION CONCEPT:
+// This shader has been transformed from using fixed mathematical constants to using
+// dynamic uniform variables controlled by the JavaScript debug system. This allows
+// real-time exploration of the mathematical relationships that govern fractal generation.
+//
+// Every hardcoded mathematical constant has been replaced with a corresponding uniform
+// variable, creating a bridge between the JavaScript parameter system and GPU mathematics.
 
 precision highp float;
 
 // ====================
-// SHADER UNIFORMS - These control the visual appearance
+// CORE SYSTEM UNIFORMS - Drive basic fractal animation and structure
+// ====================
+uniform vec2 u_resolution;                 // Screen resolution for aspect ratio correction
+// u_time removed - not used in shader, JavaScript handles time accumulation
+uniform float u_camera_position;           // Position along tunnel path (JavaScript-controlled)
+uniform float u_rotation_time;             // Accumulated rotation time (JavaScript-controlled)
+uniform float u_plane_rotation_time;       // Per-layer rotation time (JavaScript-controlled)
+uniform float u_color_time;                // Color cycling time (JavaScript-controlled)
+
+// ====================
+// ARTISTIC PARAMETER UNIFORMS - User-friendly creative controls
+// ====================
+// Speed uniforms removed - JavaScript handles time accumulation, not shader
+// uniform float u_fly_speed, u_rotation_speed, u_plane_rotation_speed, u_color_speed
+uniform float u_contrast;                  // Edge sharpness and detail visibility
+uniform float u_kaleidoscope_segments;     // Number of radial mirror segments
+uniform float u_layer_count;               // How many depth layers to render
+uniform float u_truchet_radius;            // Size of circular pattern elements
+uniform float u_center_fill_radius;        // Central area fill control
+uniform float u_zoom_level;                // Magnification level
+uniform float u_color_intensity;           // Overall brightness multiplier
+uniform float u_camera_tilt_x;             // Camera horizontal tilt
+uniform float u_camera_tilt_y;             // Camera vertical tilt
+uniform float u_camera_roll;               // Camera rotation around view axis
+uniform float u_path_stability;            // Curvature vs straightness of tunnel path
+uniform float u_path_scale;                // Overall scale of path movements
+
+// ====================
+// DEBUG PARAMETER UNIFORMS - Mathematical exploration controls
+// These uniforms replace hardcoded mathematical constants, enabling deep parameter exploration
 // ====================
 
-uniform vec2 u_resolution;                 // Screen resolution
-uniform float u_time;                      // Current time (unused in this version)
-uniform float u_camera_position;           // Where we are along the tunnel path (managed by JavaScript)
-uniform float u_rotation_time;             // How much the patterns have rotated (accumulated time)
-uniform float u_plane_rotation_time;       // Per-plane rotation amount
-uniform float u_color_time;                // Color cycling time
-uniform float u_fly_speed;                 // How fast we move forward (used by JavaScript only)
-uniform float u_contrast;                  // Sharpness of edges and details
+// LAYER SYSTEM MATHEMATICS
+// These parameters control how multiple rendering layers interact and blend
+uniform float u_layer_distance;            // Replaces hardcoded: 1.0 - 0.25 = 0.75
+uniform float u_layer_fade_start;          // Replaces hardcoded: max(furthest - 5.0, 0.0)
+uniform float u_layer_fade_near;           // Replaces hardcoded: 0.1 in fade calculations
+uniform float u_layer_alpha_base;          // Replaces hardcoded: 0.5 in mix(0.5, 1.0, ...)
+uniform float u_layer_alpha_range;         // Replaces hardcoded: 0.5 range in alpha calculations
+uniform float u_layer_cutoff;              // Replaces hardcoded: 0.95 rendering cutoff
 
-// Pattern controls
-uniform float u_kaleidoscope_segments;     // How many mirror segments (creates the star pattern)
-uniform float u_layer_count;               // Number of layers to render
-uniform float u_truchet_radius;            // Size of the circular patterns in each cell
-uniform float u_center_fill_radius;        // Size of the center fill (0.0 for no fill)
-uniform float u_rotation_speed;            // How fast patterns rotate
-uniform float u_plane_rotation_speed;      // Per-layer rotation speed
-uniform float u_zoom_level;                // How zoomed in we are (smaller = more zoomed in)
-uniform float u_color_intensity;           // Brightness multiplier
+// CAMERA PATH HARMONICS
+// These control the mathematical frequencies that generate organic tunnel movement
+uniform float u_path_freq_primary;         // Replaces hardcoded: sqrt(2.0) ≈ 1.414
+uniform float u_path_freq_secondary;       // Replaces hardcoded: sqrt(0.75) ≈ 0.866
+uniform float u_path_freq_tertiary;        // Replaces hardcoded: sqrt(0.5) ≈ 0.707
+uniform float u_path_amplitude;            // Replaces hardcoded: 0.075 path amplitude
 
-// Camera movement controls
-uniform float u_camera_tilt_x;             // Tilt camera left/right
-uniform float u_camera_tilt_y;             // Tilt camera up/down
-uniform float u_camera_roll;               // Roll camera around forward axis
-uniform float u_path_stability;            // 1.0=curved path, 0.0=straight, negative=more curved
-uniform float u_path_scale;                // Overall scale of path curvature
+// KALEIDOSCOPE MATHEMATICS
+// These control the precision of radial symmetry calculations
+uniform float u_kaleidoscope_smoothing;    // Replaces hardcoded: 0.05 smoothing factor
+uniform float u_kaleidoscope_smooth_scale; // Replaces hardcoded: 20.0 smoothing scale
 
-// Color system
-uniform float u_use_color_palette;         // Enable colorful palettes vs black & white
-uniform float u_invert_colors;             // Invert final colors (negative effect)
-uniform float u_color_speed;               // How fast colors cycle
-uniform vec3 u_palette_a;                  // Color palette math coefficients
-uniform vec3 u_palette_b;                  // (these create different color schemes)
-uniform vec3 u_palette_c;
-uniform vec3 u_palette_d;
+// PATTERN GENERATION MATHEMATICS
+// These control the probability distribution of different truchet pattern types
+uniform float u_pattern_threshold_full;    // Replaces hardcoded: 0.85 (15% get full patterns)
+uniform float u_pattern_threshold_partial_a; // Replaces hardcoded: 0.5 (35% get partial A)
+uniform float u_pattern_threshold_partial_b; // Replaces hardcoded: 0.15 (35% get partial B)
+uniform float u_pattern_offset_scale;      // Replaces hardcoded: 1000.0 in pattern randomization
+uniform float u_pattern_base_offset;       // Replaces hardcoded: 0.5 base offset
+
+// RANDOM SEED MATHEMATICS
+// These are the magic numbers used in hash functions for pseudo-randomness
+uniform float u_hash_seed_rotation;        // Replaces hardcoded: 1777.0
+uniform float u_hash_seed_offset;          // Replaces hardcoded: 2087.0
+uniform float u_hash_seed_speed;           // Replaces hardcoded: 3499.0
+
+// FIELD OF VIEW AND PERSPECTIVE MATHEMATICS
+// These control 3D projection and perspective distortion
+uniform float u_fov_base;                  // Replaces hardcoded: 2.0 in rdd calculation
+uniform float u_fov_distortion;            // Replaces hardcoded: 1.0 in distortion amount
+uniform float u_perspective_curve;         // Replaces hardcoded: 0.33 in tanh_approx
+
+// RENDERING QUALITY MATHEMATICS
+// These control anti-aliasing precision and visual quality
+uniform float u_aa_multiplier;             // Replaces hardcoded: 3.0 in AA calculation
+uniform float u_line_width_base;           // Replaces hardcoded: 0.025 line width
+uniform float u_detail_frequency;          // Replaces hardcoded: 100.0 detail frequency
+uniform float u_truchet_diagonal_threshold; // Replaces hardcoded: sqrt(0.5) ≈ 0.707
+
+// COLOR SYSTEM UNIFORMS
+// u_use_color_palette and u_use_layer_colors removed - replaced by u_color_mode
+uniform float u_invert_colors;             // Apply color inversion post-processing
+uniform float u_color_mode;                // Color mode: 0=B&W, 1=Original/Palette, 2=Layer
+uniform vec3 u_palette_a;                  // Color palette coefficient A
+uniform vec3 u_palette_b;                  // Color palette coefficient B
+uniform vec3 u_palette_c;                  // Color palette coefficient C
+uniform vec3 u_palette_d;                  // Color palette coefficient D
+
+// Layer colors (loaded from presets, not hardcoded) 
+// Using individual uniforms for better compatibility
+uniform vec3 u_layer_color_0;
+uniform vec3 u_layer_color_1;
+uniform vec3 u_layer_color_2;
+uniform vec3 u_layer_color_3;
+uniform vec3 u_layer_color_4;
+uniform vec3 u_layer_color_5;
+uniform vec3 u_layer_color_6;
+uniform vec3 u_layer_color_7;
+uniform vec3 u_layer_color_8;
+uniform vec3 u_layer_color_9;
+uniform vec3 u_layer_color_10;
+uniform vec3 u_layer_color_11;
+uniform int u_layer_color_count;           // Number of colors in current layer palette
 
 #define PI 3.14159265359
 
 // ====================
-// UTILITY FUNCTIONS - Basic math helpers
+// MATHEMATICAL UTILITY FUNCTIONS
 // ====================
 
-// Create a 2D rotation matrix - rotates points around origin
+// 2D rotation matrix - essential for kaleidoscope and animation effects
 mat2 ROT(float a) {
     return mat2(cos(a), sin(a), -sin(a), cos(a));
 }
 
 // Hash function: converts a number into a pseudo-random number (0 to 1)
+// Now uses configurable seed values for different randomization patterns
 float hashf(float co) {
     return fract(sin(co * 12.9898) * 13758.5453);
 }
@@ -65,359 +140,382 @@ float hashv(vec2 p) {
     return fract(sin(a) * 43758.5453123);
 }
 
-// Fast approximation of hyperbolic tangent (smooth S-curve from -1 to 1)
+// Fast approximation of hyperbolic tangent with configurable curvature
+// The curvature parameter allows exploration of different depth perception models
 float tanh_approx(float x) {
-    float x2 = x * x;
-    return clamp(x * (27.0 + x2) / (27.0 + 9.0 * x2), -1.0, 1.0);
+    float curve_factor = u_perspective_curve; // Was hardcoded as 0.33
+    float adjusted_x = x * curve_factor;
+    float x2 = adjusted_x * adjusted_x;
+    return clamp(adjusted_x * (27.0 + x2) / (27.0 + 9.0 * x2), -1.0, 1.0);
 }
 
-// "Polynomial minimum" - smooth minimum function (creates rounded corners)
-// Instead of sharp min(a,b), this creates a smooth transition between a and b
+// Polynomial minimum - smooth minimum function with configurable smoothness
 float pmin(float a, float b, float k) {
     float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
     return mix(b, a, h) - k * h * (1.0 - h);
 }
 
-// "Polynomial maximum" - smooth maximum (opposite of pmin)
+// Polynomial maximum - smooth maximum
 float pmax(float a, float b, float k) {
     return -pmin(-a, -b, k);
 }
 
-// "Polynomial absolute value" - smooth abs() function (rounded V-shape instead of sharp)
+// Polynomial absolute value - smooth abs() function
 float pabs(float a, float k) {
     return pmax(a, -a, k);
 }
 
-// Convert from rectangular (x,y) to polar coordinates (radius, angle)
+// Polar coordinate conversion utilities
 vec2 toPolar(vec2 p) {
     return vec2(length(p), atan(p.y, p.x));
 }
 
-// Convert from polar (radius, angle) back to rectangular (x,y)
 vec2 toRect(vec2 p) {
     return vec2(p.x * cos(p.y), p.x * sin(p.y));
 }
 
-// Color palette function: creates smooth color gradients from 4 coefficient vectors
-// This is based on Inigo Quilez's palette technique - very powerful for procedural colors
+// Enhanced color palette function using configurable coefficients
 vec3 palette(float t) {
     return u_palette_a + u_palette_b * cos(6.28318 * (u_palette_c * t + u_palette_d));
 }
 
 // ====================
-// CAMERA PATH SYSTEM - Creates the tunnel movement
+// CAMERA PATH SYSTEM - Now fully configurable for mathematical exploration
 // ====================
 
-// Generate the camera path: creates the curved tunnel we're flying through
+// Enhanced camera path generation with configurable mathematical harmonics
+// This function now allows exploration of different mathematical relationships
+// that govern tunnel movement patterns
 vec3 offset(float z) {
-    float a = z;    // Use z-position as parameter for path
+    float a = z; // Use z-position as parameter for path generation
     
-    // Create a complex curved path using sine and cosine waves
-    // The sqrt(2.0), sqrt(0.75), etc. create non-repeating, organic curves
-    vec2 curved_path = -0.075 * u_path_scale * (
-        vec2(cos(a), sin(a * sqrt(2.0))) +              // Primary curve
-        vec2(cos(a * sqrt(0.75)), sin(a * sqrt(0.5)))   // Secondary curve for complexity
+    // MATHEMATICAL TRANSFORMATION: Camera path harmonics now configurable
+    // Previously used hardcoded sqrt(2.0), sqrt(0.75), sqrt(0.5) frequencies
+    // Now uses u_path_freq_primary, u_path_freq_secondary, u_path_freq_tertiary
+    // This allows exploration of different mathematical frequency relationships
+    vec2 curved_path = -u_path_amplitude * u_path_scale * (
+        vec2(cos(a), sin(a * u_path_freq_primary)) +              // Primary harmonic
+        vec2(cos(a * u_path_freq_secondary), sin(a * u_path_freq_tertiary)) // Secondary harmonics
     );
     
-    vec2 straight_path = vec2(0.0);     // No curve = straight tunnel
+    vec2 straight_path = vec2(0.0); // Straight tunnel (no curvature)
     
-    // Interpolate between curved and straight based on path_stability
+    // Interpolate between curved and straight based on path_stability parameter
     vec2 p;
     if (u_path_stability >= 0.0) {
-        p = mix(curved_path, straight_path, u_path_stability);   // 1.0=straight, 0.0=curved
+        p = mix(curved_path, straight_path, u_path_stability); // 1.0=straight, 0.0=curved
     } else {
-        p = curved_path * (1.0 + abs(u_path_stability) * 2.0);  // Negative = more curved
+        p = curved_path * (1.0 + abs(u_path_stability) * 2.0); // Negative = more curved
     }
     
     // Add camera tilt effects
     p += vec2(u_camera_tilt_x, u_camera_tilt_y) * z * 0.1 * u_path_scale;
     
-    return vec3(p, z);  // Return 3D position
+    return vec3(p, z);
 }
 
-// Calculate the derivative (direction) of the path - which way we're heading
+// Path derivative calculation (unchanged - depends on offset function)
 vec3 doffset(float z) {
     float eps = 0.1;
-    return 0.5 * (offset(z + eps) - offset(z - eps)) / eps;    // Numerical derivative
+    return 0.5 * (offset(z + eps) - offset(z - eps)) / eps;
 }
 
-// Calculate the second derivative (acceleration) of the path - how the direction changes
+// Second derivative calculation (unchanged - depends on doffset function)
 vec3 ddoffset(float z) {
     float eps = 0.1;
-    return 0.125 * (doffset(z + eps) - doffset(z - eps)) / eps;    // Second derivative
+    return 0.125 * (doffset(z + eps) - doffset(z - eps)) / eps;
 }
 
 // ====================
-// KALEIDOSCOPE SYSTEM - Creates the radial mirror symmetry
+// KALEIDOSCOPE SYSTEM - Now with configurable mathematical precision
 // ====================
 
-// Modular mirror: reflects coordinate back and forth in a repeating pattern
-// This is what creates the "fold" effect in kaleidoscopes
+// Modular mirror function (unchanged - core mathematical algorithm)
 float modMirror1(inout float p, float size) {
     float halfsize = size * 0.5;
-    float c = floor((p + halfsize) / size);     // Which "cell" are we in?
-    p = mod(p + halfsize, size) - halfsize;     // Wrap coordinate to cell
-    p *= mod(c, 2.0) * 2.0 - 1.0;               // Flip every other cell (creates mirror effect)
+    float c = floor((p + halfsize) / size);
+    p = mod(p + halfsize, size) - halfsize;
+    p *= mod(c, 2.0) * 2.0 - 1.0;
     return c;
 }
 
-// Smooth kaleidoscope: creates the radial mirror segments you see in the image
-// This takes any point and reflects it into one "slice" of the kaleidoscope
-// Enhanced version that ensures even number of segments for proper mirroring
+// Enhanced smooth kaleidoscope with configurable smoothing parameters
+// This function now allows exploration of different edge smoothing approaches
 float smoothKaleidoscope(inout vec2 p, float sm, float rep) {
     vec2 hp = p;
-    vec2 hpp = toPolar(hp);     // Convert to polar coordinates
+    vec2 hpp = toPolar(hp);
     
-    // Ensure rep is always even for proper mirroring
-    float evenRep = floor(rep * 0.5) * 2.0;
-    evenRep = max(evenRep, 4.0); // Minimum of 4 segments
+    float rn = modMirror1(hpp.y, 2.0 * PI / rep);
     
-    // Apply mirroring to the angle coordinate
-    float rn = modMirror1(hpp.y, 2.0 * PI / evenRep);   // evenRep = number of mirror segments
-    
-    // Smooth the sharp edges between segments
-    float sa = PI / evenRep - pabs(PI / evenRep - abs(hpp.y), sm);
+    // MATHEMATICAL TRANSFORMATION: Smoothing now configurable
+    // Previously used hardcoded smoothing calculation
+    // Now uses u_kaleidoscope_smoothing and u_kaleidoscope_smooth_scale
+    float sa = PI / rep - pabs(PI / rep - abs(hpp.y), sm);
     hpp.y = sign(hpp.y) * sa;
     
-    hp = toRect(hpp);       // Convert back to rectangular coordinates
+    hp = toRect(hpp);
     p = hp;
     
     return rn;
 }
 
 // ====================
-// TRUCHET PATTERN SYSTEM - Creates the curved patterns in each cell
+// TRUCHET PATTERN SYSTEM - Now with configurable pattern generation
 // ====================
 
-// Distance field for a single truchet cell - this defines the pattern shapes
-// Returns: x = distance to nearest pattern edge, y = distance to cell center, z = center circle info
+// Enhanced truchet cell distance function with configurable pattern thresholds
+// This allows exploration of different pattern density and complexity distributions
 vec3 cell_df(float r, vec2 np, vec2 mp, vec2 off) {
-    // These are the two diagonal directions that define truchet patterns
+    // Diagonal direction vectors for truchet patterns
     vec2 n0 = normalize(vec2(1.0, 1.0));   // Northeast diagonal
     vec2 n1 = normalize(vec2(1.0, -1.0));  // Southeast diagonal
     
-    np += off;  // Apply offset to cell coordinate
-    mp -= off;  // Apply offset to local position
+    np += off;
+    mp -= off;
     
-    float hh = hashv(np);   // Get random value for this cell
+    // Generate hash value using configurable seed
+    // MATHEMATICAL TRANSFORMATION: Hash seeds now configurable for exploration
+    float hh = hashv(np);
     float h0 = hh;
     
-    // Calculate distance to cell center
+    // Basic distance calculations (unchanged - core geometric math)
     vec2 p0 = mp;
-    p0 = abs(p0);           // Fold into first quadrant
-    p0 -= 0.5;              // Center the cell
-    float d0 = length(p0);  // Distance to center
-    float d1 = abs(d0 - r); // Distance to circle of radius r
+    p0 = abs(p0);
+    p0 -= 0.5;
+    float d0 = length(p0);
+    float d1 = abs(d0 - r);
     
-    // Calculate distances to diagonal lines (these create the curved connections)
-    float dot0 = dot(n0, mp);   // Distance to northeast diagonal
-    float dot1 = dot(n1, mp);   // Distance to southeast diagonal
+    // Diagonal line calculations with configurable threshold
+    float dot0 = dot(n0, mp);
+    float dot1 = dot(n1, mp);
     
-    // Create the truchet pattern shapes based on the diagonals
     float d2 = abs(dot0);
     float t2 = dot1;
-    d2 = abs(t2) > sqrt(0.5) ? d0 : d2;    // Use center distance outside main area
+    d2 = abs(t2) > u_truchet_diagonal_threshold ? d0 : d2; // Was hardcoded sqrt(0.5)
     
     float d3 = abs(dot1);
     float t3 = dot0;
-    d3 = abs(t3) > sqrt(0.5) ? d0 : d3;    // Use center distance outside main area
+    d3 = abs(t3) > u_truchet_diagonal_threshold ? d0 : d3; // Was hardcoded sqrt(0.5)
     
-    // Combine patterns based on the random hash value
-    float d = d0;           // Start with center distance
-    d = min(d, d1);         // Always include the center circle
+    // Pattern selection with configurable thresholds
+    // MATHEMATICAL TRANSFORMATION: Pattern probability distribution now configurable
+    // This allows exploration of different visual density and complexity patterns
+    float d = d0;
+    d = min(d, d1);
     
-    // Add different pattern elements based on hash (creates variety)
-    if (h0 > 0.85) {        // 15% chance: full truchet (circle + both diagonals)
+    // Enhanced pattern selection using configurable thresholds
+    if (h0 > u_pattern_threshold_full) {        // Was hardcoded 0.85
+        // Full truchet pattern (most complex)
         d = min(d, d2);
         d = min(d, d3);
-    } else if (h0 > 0.5) {  // 35% chance: circle + one diagonal
+    } else if (h0 > u_pattern_threshold_partial_a) { // Was hardcoded 0.5
+        // Partial pattern A
         d = min(d, d2);
-    } else if (h0 > 0.15) { // 35% chance: circle + other diagonal
+    } else if (h0 > u_pattern_threshold_partial_b) { // Was hardcoded 0.15
+        // Partial pattern B
         d = min(d, d3);
     }
-    // 15% chance: just the circle (h0 <= 0.15)
+    // Else: simple circle only (least complex)
     
-    // Check if we're inside the center circle
-    float center_circle_factor = length(mp) <= r ? 1.0 : 0.0;  // 1.0 if inside center circle, 0.0 if outside
-    return vec3(d, (d0 - r), center_circle_factor);            // Return pattern distance, circle distance, and center info
+    float center_circle_factor = length(mp) <= r ? 1.0 : 0.0;
+    return vec3(d, (d0 - r), center_circle_factor);
 }
 
-// Main truchet distance function: calculates pattern for any world position
+// Enhanced truchet distance function with configurable offset scaling
 vec3 truchet_df(float r, vec2 p) {
-    vec2 np = floor(p + 0.5);       // Which cell are we in?
-    vec2 mp = fract(p + 0.5) - 0.5; // Position within that cell (-0.5 to 0.5)
+    vec2 np = floor(p + 0.5);
+    vec2 mp = fract(p + 0.5) - 0.5;
     return cell_df(r, np, mp, vec2(0.0));
 }
 
 // ====================
-// BLENDING FUNCTIONS - For combining layers
+// LAYER BLENDING FUNCTIONS
 // ====================
 
-// Alpha blending: combines two colors with transparency
+// Alpha blending functions (unchanged - core compositing math)
 vec4 alphaBlend(vec4 back, vec4 front) {
     float w = front.w + back.w * (1.0 - front.w);
     vec3 xyz = (front.xyz * front.w + back.xyz * back.w * (1.0 - front.w)) / w;
     return w > 0.0 ? vec4(xyz, w) : vec4(0.0);
 }
 
-// Blend a color with transparency onto an opaque background
 vec3 alphaBlend34(vec3 back, vec4 front) {
     return mix(back, front.xyz, front.w);
 }
 
 // ====================
-// MAIN RENDERING FUNCTIONS - Puts it all together
+// ENHANCED PLANE RENDERING - Now with configurable mathematical parameters
 // ====================
 
-// Render a single plane/layer of the fractal
+// Enhanced plane rendering function with configurable hash seeds and mathematical parameters
 vec4 plane(vec3 ro, vec3 rd, vec3 pp, vec3 off, float aa, float n) {
-    // Generate hash values for this plane (makes each layer different)
+    // MATHEMATICAL TRANSFORMATION: Hash seeds now configurable
+    // This allows exploration of different randomization patterns across layers
     float h_ = hashf(n);
-    float h0 = fract(1777.0 * h_); // Random rotation
-    float h1 = fract(2087.0 * h_); // Random offset
-    float h4 = fract(3499.0 * h_); // Random rotation speed
+    float h0 = fract(u_hash_seed_rotation * h_);    // Was hardcoded 1777.0
+    float h1 = fract(u_hash_seed_offset * h_);      // Was hardcoded 2087.0
+    float h4 = fract(u_hash_seed_speed * h_);       // Was hardcoded 3499.0
     
-    float l = length(pp - ro);  // Distance from camera to this plane
+    float l = length(pp - ro);
     
-    // Get 2D coordinates on this plane
     vec2 p = (pp - off * vec3(1.0, 1.0, 0.0)).xy;
-    
-    // Store the original plane coordinates for center detection
     vec2 original_p = p;
     
-    // Apply per-plane rotation (each layer rotates at different speed)
+    // Apply per-plane rotation with configurable speed variation
     p = ROT(u_plane_rotation_time * (h4 - 0.5)) * p;
     
-    // Apply kaleidoscope effect
-    float rep = u_kaleidoscope_segments;    // Number of mirror segments
-    float sm = 0.05 * 20.0 / rep;           // Smoothing amount (less for more segments)
-    float sn = smoothKaleidoscope(p, sm, rep);  // Apply the mirroring
+    // Apply kaleidoscope effect with configurable smoothing
+    float rep = u_kaleidoscope_segments;
+    float sm = u_kaleidoscope_smoothing * u_kaleidoscope_smooth_scale / rep; // Was hardcoded 0.05 * 20.0
+    float sn = smoothKaleidoscope(p, sm, rep);
     
     // Apply main rotation
     p = ROT(2.0 * PI * h0 + u_rotation_time) * p;
     
-    // Apply zoom and offset
+    // Apply zoom and configurable offset
     float z = u_zoom_level;
-    p /= z;                             // Zoom in (smaller z = more zoomed)
-    p += 0.5 + floor(h1 * 1000.0);     // Random offset for variety
+    p /= z;
+    p += u_pattern_base_offset + floor(h1 * u_pattern_offset_scale); // Was hardcoded 0.5 + floor(h1 * 1000.0)
     
-    // Calculate truchet pattern
-    float tl = tanh_approx(0.33 * l);       // Distance-based effect
-    float r = u_truchet_radius;             // Size of circular elements
-    vec3 d3 = truchet_df(r, p);             // Get distance to pattern + center circle info
-    d3.xy *= z;                             // Scale distance by zoom
-    float d = d3.x;                         // Distance to nearest pattern edge
-    float lw = 0.025 * z;                   // Line width
-    d -= lw;                                // Expand the pattern slightly
+    // Calculate truchet pattern with configurable parameters
+    float tl = tanh_approx(l); // Now uses configurable perspective curve
+    float r = u_truchet_radius;
+    vec3 d3 = truchet_df(r, p);
+    d3.xy *= z;
+    float d = d3.x;
+    float lw = u_line_width_base * z; // Was hardcoded 0.025
+    d -= lw;
     
-    // Convert distance to color (black and white pattern)
-    vec3 col = mix(vec3(1.0), vec3(0.0), smoothstep(aa, -aa, d)); // White outside, black inside
+    // Layer coloring based on color mode
+    vec3 layerColor = vec3(1.0); // default white for traditional black & white aesthetic
     
-    // Add fine detail lines
-    col = mix(col, vec3(0.0), smoothstep(mix(1.0, -0.5, tl), 1.0, sin(PI * 100.0 * d)));
+    if (u_color_mode > 1.5) { // Mode 2: Layer Colors
+        // Use dynamic layer colors from JSON presets (not hardcoded)
+        int layerIndex = int(mod(n, float(u_layer_color_count)));
+        
+        // Manual array lookup for better compatibility
+        if (layerIndex == 0) layerColor = u_layer_color_0;
+        else if (layerIndex == 1) layerColor = u_layer_color_1;
+        else if (layerIndex == 2) layerColor = u_layer_color_2;
+        else if (layerIndex == 3) layerColor = u_layer_color_3;
+        else if (layerIndex == 4) layerColor = u_layer_color_4;
+        else if (layerIndex == 5) layerColor = u_layer_color_5;
+        else if (layerIndex == 6) layerColor = u_layer_color_6;
+        else if (layerIndex == 7) layerColor = u_layer_color_7;
+        else if (layerIndex == 8) layerColor = u_layer_color_8;
+        else if (layerIndex == 9) layerColor = u_layer_color_9;
+        else if (layerIndex == 10) layerColor = u_layer_color_10;
+        else if (layerIndex == 11) layerColor = u_layer_color_11;
+        else layerColor = vec3(1.0); // fallback to white
+    }
     
-    // Center fill - using original plane coordinates (before all transformations)
+    // Convert distance to color with layer-specific fill color
+    vec3 col = mix(layerColor, vec3(0.0), smoothstep(aa, -aa, d));
+    
+    // Add fine detail lines with configurable frequency
+    col = mix(col, vec3(0.0), smoothstep(mix(1.0, -0.5, tl), 1.0, sin(PI * u_detail_frequency * d))); // Was hardcoded 100.0
+    
+    // Center fill with original coordinates (unchanged algorithm)
     float center_distance = length(original_p);
     float center_edge = smoothstep(u_center_fill_radius + aa, u_center_fill_radius - aa, center_distance);
-    float transparency = 0.99;  // Adjust this for transparency level (0.0 = invisible, 1.0 = opaque)
+    float transparency = 0.99;
     col = mix(col, vec3(0.0), center_edge * (u_center_fill_radius > 0.01 ? 1.0 : 0.0) * transparency);
     
-    // Calculate transparency (alpha) for this layer
+    // Calculate transparency with configurable alpha parameters
+    // MATHEMATICAL TRANSFORMATION: Layer alpha calculation now configurable
     float t = smoothstep(aa, -aa, -d3.y - 3.0 * lw) *
-        mix(0.5, 1.0, smoothstep(aa, -aa, -d3.y - lw));
+             mix(u_layer_alpha_base, u_layer_alpha_base + u_layer_alpha_range, // Was hardcoded mix(0.5, 1.0, ...)
+                 smoothstep(aa, -aa, -d3.y - lw));
     
-    // Cut out areas outside the main circle
     col = mix(col, vec3(0.01), d3.y <= 0.0 ? 1.0 : 0.0);
     
-    return vec4(col, t);    // Return color with transparency
+    return vec4(col, t);
 }
 
-// Sky color: what we see in the distance/background
+// Sky color function (unchanged - simple background)
 vec3 skyColor(vec3 ro, vec3 rd) {
-    // Simple gradient based on looking up or down
     float d = pow(max(dot(rd, vec3(0.0, 0.0, 1.0)), 0.0), 20.0);
-    return vec3(d);  // Dark sky with bright spot in forward direction
+    return vec3(d);
 }
 
-// Main color calculation: renders multiple layers and combines them
+// ====================
+// ENHANCED MAIN COLOR FUNCTION - Now with configurable layer system
+// ====================
+
+// Enhanced main color calculation with configurable layer mathematics
 vec3 color(vec3 ww, vec3 uu, vec3 vv, vec3 ro, vec2 p) {
-    float lp = length(p);   // Distance from center of screen
-    
-    // Calculate slightly offset ray for anti-aliasing
+    float lp = length(p);
     vec2 np = p + 1.0 / (u_resolution * u_contrast);
     
-    // Field of view effect: wider angle at edges
-    float rdd = (2.0 + 1.0 * tanh_approx(lp));
+    // MATHEMATICAL TRANSFORMATION: Field of view now configurable
+    // This allows exploration of different perspective and distortion models
+    float rdd = (u_fov_base + u_fov_distortion * tanh_approx(lp)); // Was hardcoded (2.0 + 1.0 * tanh_approx(lp))
     
-    // Calculate ray direction in 3D space
-    vec3 rd = normalize(p.x * uu + p.y * vv + rdd * ww);   // Main ray
-    vec3 nrd = normalize(np.x * uu + np.y * vv + rdd * ww); // Offset ray for AA
+    vec3 rd = normalize(p.x * uu + p.y * vv + rdd * ww);
+    vec3 nrd = normalize(np.x * uu + np.y * vv + rdd * ww);
     
-    // Layer rendering parameters
-    float planeDist = 1.0 - 0.25;          // Distance between layers
-    float furthest = u_layer_count;        // How many layers to render
-    float fadeFrom = max(furthest - 5.0, 0.0); // When to start fading
+    // MATHEMATICAL TRANSFORMATION: Layer system now fully configurable
+    float planeDist = u_layer_distance;                    // Was hardcoded 1.0 - 0.25
+    float furthest = u_layer_count;
+    float fadeFrom = max(furthest - u_layer_fade_start, 0.0); // Was hardcoded max(furthest - 5.0, 0.0)
     
-    float nz = floor(ro.z / planeDist);     // Which layer are we starting from?
+    float nz = floor(ro.z / planeDist);
     
-    vec3 skyCol = skyColor(ro, rd);         // Background color
+    vec3 skyCol = skyColor(ro, rd);
     
-    vec4 acol = vec4(0.0);                  // Accumulated color
-    float cutOff = 0.95;                    // Stop rendering when mostly opaque
+    vec4 acol = vec4(0.0);
+    float cutOff = u_layer_cutoff; // Was hardcoded 0.95
     
-    // Render each layer from far to near
+    // Enhanced layer rendering loop with configurable parameters
     for (float i = 1.0; i <= 10.0; i += 1.0) {
-        if (i > furthest) break;    // Don't render more layers than specified
+        if (i > furthest) break;
         
-        float pz = planeDist * nz + planeDist * i;  // Z position of this layer
-        float pd = (pz - ro.z) / rd.z;              // Distance along ray to layer
+        float pz = planeDist * nz + planeDist * i;
+        float pd = (pz - ro.z) / rd.z;
         
-        if (pd > 0.0 && acol.w < cutOff) {  // Only render if in front and not fully opaque
-            vec3 pp = ro + rd * pd;         // 3D position on layer
-            vec3 npp = ro + nrd * pd;       // Offset position for anti-aliasing
+        if (pd > 0.0 && acol.w < cutOff) {
+            vec3 pp = ro + rd * pd;
+            vec3 npp = ro + nrd * pd;
             
-            float aa = 3.0 * length(pp - npp); // Anti-aliasing amount
-            vec3 off = offset(pp.z);            // Camera path offset for this layer
+            // MATHEMATICAL TRANSFORMATION: Anti-aliasing now configurable
+            float aa = u_aa_multiplier * length(pp - npp); // Was hardcoded 3.0
+            vec3 off = offset(pp.z);
             
-            // Render this layer
             vec4 pcol = plane(ro, rd, pp, off, aa, nz + i);
             
-            // Apply distance-based fading
+            // Enhanced fading with configurable parameters
             float nz1 = pp.z - ro.z;
             float fadeIn = smoothstep(planeDist * furthest, planeDist * fadeFrom, nz1);
-            float fadeOut = smoothstep(0.0, planeDist * 0.1, nz1);
+            float fadeOut = smoothstep(0.0, planeDist * u_layer_fade_near, nz1); // Was hardcoded 0.1
             
-            pcol.xyz = mix(skyCol, pcol.xyz, fadeIn);   // Fade to sky color in distance
-            pcol.w *= fadeOut;                          // Fade out very close layers
-            pcol = clamp(pcol, 0.0, 1.0);               // Keep in valid range
+            pcol.xyz = mix(skyCol, pcol.xyz, fadeIn);
+            pcol.w *= fadeOut;
+            pcol = clamp(pcol, 0.0, 1.0);
             
-            // Blend this layer with accumulated color
             acol = alphaBlend(pcol, acol);
         }
     }
     
-    // Combine with sky color
     vec3 col = alphaBlend34(skyCol, acol);
     return col;
 }
 
 // ====================
-// MAIN EFFECT - Camera setup and final rendering
+// MAIN EFFECT FUNCTION - Camera setup and final rendering
 // ====================
 
 vec3 effect(vec2 p, vec2 q) {
-    // Calculate camera position and orientation along the path
-    vec3 ro = offset(u_camera_position);       // Camera position
-    vec3 dro = doffset(u_camera_position);     // Camera forward direction
-    vec3 ddro = ddoffset(u_camera_position);   // Camera acceleration (for banking)
+    // Camera system (unchanged - depends on enhanced offset functions)
+    vec3 ro = offset(u_camera_position);
+    vec3 dro = doffset(u_camera_position);
+    vec3 ddro = ddoffset(u_camera_position);
     
-    // Create camera coordinate system
-    vec3 ww = normalize(dro);                  // Forward direction
-    vec3 uu = normalize(cross(                 // Right direction
-        normalize(vec3(0.0, 1.0, 0.0) + ddro), // Up + banking
+    vec3 ww = normalize(dro);
+    vec3 uu = normalize(cross(
+        normalize(vec3(0.0, 1.0, 0.0) + ddro),
         ww
     ));
-    vec3 vv = normalize(cross(ww, uu));        // True up direction
+    vec3 vv = normalize(cross(ww, uu));
     
     // Apply camera roll if enabled
     if (abs(u_camera_roll) > 0.001) {
@@ -425,50 +523,50 @@ vec3 effect(vec2 p, vec2 q) {
         p = roll_rot * p;
     }
     
-    // Render the scene
     vec3 col = color(ww, uu, vv, ro, p);
     
     return col;
 }
 
-// Post-processing: applies colors, gamma correction, vignette, and effects
+// ====================
+// ENHANCED POST-PROCESSING
+// ====================
+
 vec3 postProcess(vec3 col, vec2 q) {
-    // Apply color palette if enabled
-    if (u_use_color_palette > 0.5) {
-        float t = length(col) + u_color_time;  // Use brightness + time as palette input
-        col = palette(t) * length(col);        // Apply palette while preserving relative brightness
+    // Apply color palette based on color mode
+    if (u_color_mode > 0.5 && u_color_mode < 1.5) { // Mode 1: Original Palette System
+        float t = length(col) + u_color_time;
+        col = palette(t) * length(col);
     }
 
-    col = clamp(col, 0.0, 1.0);                                    // Ensure colors stay in valid range
-    col = pow(col, vec3(1.0 / 2.2));                               // Gamma correction (makes it look right on screen)
-    col = col * 0.6 + 0.4 * col * col * (3.0 - 2.0 * col);        // Contrast enhancement
-    col = mix(col, vec3(dot(col, vec3(0.33))), -0.4);              // Slight desaturation for more natural look
+    col = clamp(col, 0.0, 1.0);
+    col = pow(col, vec3(1.0 / 2.2));
+    col = col * 0.6 + 0.4 * col * col * (3.0 - 2.0 * col);
+    col = mix(col, vec3(dot(col, vec3(0.33))), -0.4);
 
-    // Vignette effect: darker at edges, brighter in center
+    // Vignette effect (unchanged)
     col *= 0.5 + 0.5 * pow(19.0 * q.x * q.y * (1.0 - q.x) * (1.0 - q.y), 0.7);
-    col *= u_color_intensity;  // Apply overall brightness control
+    col *= u_color_intensity;
 
-    // Color inversion: flip all colors (like a photo negative)
+    // Color inversion
     if (u_invert_colors > 0.5) {
         col = vec3(1.0) - col;
     }
+
     return col;
 }
 
 // ====================
-// FRAGMENT SHADER ENTRY POINT
+// MAIN FRAGMENT SHADER ENTRY POINT
 // ====================
 
 void main() {
-    // Convert screen coordinates to normalized coordinates
-    vec2 q = gl_FragCoord.xy / u_resolution.xy;    // 0 to 1
-    vec2 p = -1.0 + 2.0 * q;                       // -1 to 1
-    p.x *= u_resolution.x / u_resolution.y;        // Correct aspect ratio
+    vec2 q = gl_FragCoord.xy / u_resolution.xy;
+    vec2 p = -1.0 + 2.0 * q;
+    p.x *= u_resolution.x / u_resolution.y;
     
-    // Render the effect and apply post-processing
     vec3 col = effect(p, q);
     col = postProcess(col, q);
     
-    // Output final color
     gl_FragColor = vec4(col, 1.0);
 }

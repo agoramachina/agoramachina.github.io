@@ -7,10 +7,10 @@
     
     <!-- CSS Architecture: Layered styling system for dual-mode interface -->
     <!-- Each CSS file handles a specific aspect of the interface design -->
-    <link rel="stylesheet" href="css/main.css">    <!-- Core layout and foundation styles -->
-    <link rel="stylesheet" href="css/ui.css">      <!-- Artistic interface components -->
-    <link rel="stylesheet" href="css/menu.css">    <!-- Main menu and overlay systems -->
-    <link rel="stylesheet" href="css/debug.css">   <!-- Debug menu -->
+    <link rel="stylesheet" href="css/main.css">         <!-- Core layout, UI components, and menu styles -->
+    <link rel="stylesheet" href="css/debug-menu.css">   <!-- Debug menu -->
+    <link rel="stylesheet" href="css/audio-menu.css">   <!-- Advanced audio sync menu -->
+    <link rel="stylesheet" href="css/color-menu.css">   <!-- Advanced color control menu -->
     
     <!-- Enhanced meta tags for better web app behavior -->
     <meta name="description" content="Interactive fractal visualization with real-time mathematical parameter control">
@@ -66,7 +66,7 @@
         
         <!-- Audio reactive controls for live performance -->
         A Upload audio file<br>
-        M Toggle microphone<br>
+        <strong style="color: #FF5722;">M Advanced audio sync</strong><br>
         
         <!-- Advanced controls for power users -->
         Ctrl+Z Undo<br>
@@ -108,9 +108,11 @@
                     <div id="allAudioStatus" style="font-family: monospace; font-size: 12px; line-height: 1.3;"></div>
                 </div>
                 
+                <!-- OSC system removed -->
+                
                 <!-- Quick reference for artistic controls -->
                 <div>
-                    <h3 style="color: #FFC107; margin-bottom: 8px; font-size: 14px;">Quick Controls</h3>
+                    <h3 style="color: #FF5722; margin-bottom: 8px; font-size: 14px;">Quick Controls</h3>
                     <div style="font-size: 11px; line-height: 1.2;">
                         <strong>Navigation:</strong> ↑/↓ switch • ←/→ adjust<br>
                         <strong>Randomize:</strong> C colors • . parameters<br>
@@ -119,7 +121,7 @@
                         <strong>Files:</strong> S save • L load<br>
                         <strong>Undo:</strong> Ctrl+Z/Y • Space pause<br>
                         <strong>Colors:</strong> I invert • Shift+C reset<br>
-                        <strong style="color: #FFC107;">Debug:</strong> ; mathematical mode<br>
+                        <strong style="color: #FF5722;">Debug:</strong> ; mathematical mode<br>
                     </div>
                 </div>
             </div>
@@ -166,9 +168,9 @@
                         <div><strong>Navigate:</strong> ↑/↓ switch mathematical parameter</div>
                         <div><strong>Adjust:</strong> ←/→ change mathematical value</div>
                         <div><strong>Reset:</strong> R reset current, Shift+R reset all</div>
-                        <div><strong>Explore:</strong> . randomize (safe parameters only)</div>
+                        <div><strong>Explore:</strong> . randomize artistic, , randomize debug</div>
                         <div><strong>Export:</strong> E copy mathematical state to clipboard</div>
-                        <div><strong>Stats:</strong> D show system diagnostics</div>
+                        <div><strong>Debug:</strong> D console logging controls</div>
                         <div><strong>Help:</strong> H show debug help information</div>
                         <div><strong>Exit:</strong> ; or ESC return to artistic mode</div>
                     </div>
@@ -187,17 +189,6 @@
                     </div>
                 </div>
                 
-                <!-- MATHEMATICAL EXPLORATION WARNING -->
-                <!-- This panel helps users understand they're working with mathematical internals -->
-                <div style="background: rgba(255, 170, 0, 0.1); border: 1px solid #ffaa00; border-radius: 4px; padding: 10px; margin-bottom: 15px;">
-                    <h3 style="color: #ffaa00; margin-bottom: 8px; font-size: 13px;">⚠️ Mathematical Exploration</h3>
-                    <div style="font-size: 9px; line-height: 1.2; color: #ffaa00;">
-                        You are directly controlling the mathematical foundations of the fractal visualization.
-                        These parameters expose shader internals and mathematical constants.
-                        Extreme values may cause visual artifacts or performance issues.
-                        Use Ctrl+Z to safely undo any changes that produce unexpected results.
-                    </div>
-                </div>
                 
                 <!-- MATHEMATICAL CATEGORY REFERENCE -->
                 <!-- This panel helps users understand the organization of mathematical parameters -->
@@ -225,6 +216,9 @@
                         Monitoring mathematical complexity and rendering performance...
                     </div>
                 </div>
+                
+                <!-- OSC system removed -->
+                
             </div>
         </div>
         

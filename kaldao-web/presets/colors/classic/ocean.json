@@ -1,0 +1,11 @@
+{
+  "name": "Ocean",
+  "description": "Deep ocean blues and teals",
+  "type": "mathematical",
+  "coefficients": {
+    "a": [0.2, 0.5, 0.8],
+    "b": [0.2, 0.3, 0.5],
+    "c": [1.0, 1.5, 2.0],
+    "d": [0.0, 0.2, 0.5]
+  }
+}

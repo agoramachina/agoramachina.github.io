@@ -1,0 +1,13 @@
+{
+  "name": "Raspberry",
+  "description": "Juicy colors for layer-based coloring",
+  "type": "layer",
+  "colors": [
+    "#FD0363",
+    "#CC095D", 
+    "#9C1057",
+    "#6B1650",
+    "#3B1D4A",
+    "#0A2344"
+  ]
+}

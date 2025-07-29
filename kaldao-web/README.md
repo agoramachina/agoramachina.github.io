@@ -181,10 +181,11 @@ kaldao-fractal/
 │   └── modules/           # Core modules
 │       ├── parameters.js  # Parameter management with audio modifiers
 │       ├── audio.js       # Audio system and reactivity
-│       ├── controls.js    # Desktop input handling
-│       ├── mobile.js      # Mobile gesture controls
+│       ├── controls.js    # Input handling and keyboard shortcuts
 │       ├── renderer.js    # WebGL rendering
 │       ├── ui.js          # UI management
+│       ├── color.js       # Color system and palette management
+│       ├── debug-ui.js    # Debug interface for mathematical exploration
 │       └── fileIO.js      # Save/load functionality
 ├── shaders/               # GLSL shaders
 │   ├── vertex.glsl        # Vertex shader
@@ -201,8 +202,7 @@ kaldao-fractal/
 4. Add default value to reset functions
 
 ### Mobile Development
-- Touch events are handled in `js/modules/mobile.js`
-- Device orientation and motion APIs integrated
+- Touch events are handled through the main UI system
 - Responsive CSS with mobile-first design
 - Progressive enhancement for desktop features
 
@@ -278,7 +278,7 @@ Kaldao is released under the MIT License. See [Credits](#credits) for other proj
 - **Truchet + Kaleidoscope FTW**: Based on mrange's [Truchet + Kaleidoscope FTW](https://www.shadertoy.com/view/7lKSWW) shader
 - **Color Palettes**: Inigo Quilez's [palette techniques](https://iquilezles.org/www/index.htm)
 - **Mirror Transforms**: mercury's [ModMirror](https://mercury.sexy/hg_sdf/)
-
+- **Development Support**: Claude AI for coding assistance and architecture guidance
 ## 📈 Version History
 
 ### v0.3.2 (Current)

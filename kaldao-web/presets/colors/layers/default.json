@@ -1,0 +1,13 @@
+{
+  "name": "Default",
+  "description": "Muted colors for layer-based coloring",
+  "type": "layer",
+  "colors": [
+    "#CD001A",
+    "#EF6A00", 
+    "#F2CD00",
+    "#79C300",
+    "#1961AE",
+    "#61007D"
+  ]
+}
